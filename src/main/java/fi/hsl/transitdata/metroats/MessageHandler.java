@@ -1,9 +1,6 @@
-package fi.hsl.transitdata.hfp;
+package fi.hsl.transitdata.metroats;
 
-import fi.hsl.common.hfp.HfpJson;
-import fi.hsl.common.hfp.HfpParser;
-import fi.hsl.common.hfp.proto.Hfp;
-import fi.hsl.common.mqtt.proto.Mqtt;
+import fi.hsl.common.transitdata.proto.MetroAtsProtos;
 import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
@@ -13,7 +10,7 @@ import org.apache.pulsar.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Optional;
 
 
 public class MessageHandler implements IMessageHandler {
@@ -21,22 +18,30 @@ public class MessageHandler implements IMessageHandler {
 
     private Consumer<byte[]> consumer;
     private Producer<byte[]> producer;
+    private MetroEstimatesFactory metroEstimatesFactory;
 
-    private final HfpParser parser = HfpParser.newInstance();
-
-    public MessageHandler(PulsarApplicationContext context) {
+    public MessageHandler(PulsarApplicationContext context, final MetroEstimatesFactory metroEstimatesFactory) {
         consumer = context.getConsumer();
         producer = context.getProducer();
+        this.metroEstimatesFactory = metroEstimatesFactory;
     }
 
     public void handleMessage(Message received) throws Exception {
         try {
             if (TransitdataSchema.hasProtobufSchema(received, ProtobufSchema.MqttRawMessage)) {
-                final long timestamp = received.getEventTime();
-                byte[] data = received.getData();
 
-                Hfp.Data converted = parseData(data, timestamp);
-                sendPulsarMessage(received.getMessageId(), converted, timestamp);
+                final Optional<MetroAtsProtos.MetroEstimate> maybeMetroEstimate = metroEstimatesFactory.toMetroEstimate(received);
+
+                    if (maybeMetroEstimate.isPresent()) {
+                        final MessageId messageId = received.getMessageId();
+                        final long timestamp = received.getEventTime();
+                        final String key = received.getKey();
+                        final MetroAtsProtos.MetroEstimate metroEstimate = maybeMetroEstimate.get();
+                        sendPulsarMessage(messageId, metroEstimate, timestamp, key);
+                    } else {
+                        log.warn("Received unexpected schema, ignoring.");
+                        ack(received.getMessageId()); //Ack so we don't receive it again
+                    }
             }
             else {
                 log.warn("Received unexpected schema, ignoring.");
@@ -57,33 +62,18 @@ public class MessageHandler implements IMessageHandler {
                 .thenRun(() -> {});
     }
 
-    Hfp.Data parseData(byte[] data, long timestamp) throws Exception {
-        final Mqtt.RawMessage raw = Mqtt.RawMessage.parseFrom(data);
-        final String rawTopic = raw.getTopic();
-        final byte[] rawPayload = raw.getPayload().toByteArray();
-
-        final HfpJson jsonPayload = parser.parseJson(rawPayload);
-        Hfp.Payload payload = HfpParser.parsePayload(jsonPayload);
-        Hfp.Topic topic = HfpParser.parseTopic(rawTopic, timestamp);
-
-        Hfp.Data.Builder builder = Hfp.Data.newBuilder();
-        builder.setSchemaVersion(builder.getSchemaVersion())
-                .setPayload(payload)
-                .setTopic(topic);
-        return builder.build();
-    }
-
-    private void sendPulsarMessage(MessageId received, Hfp.Data hfp, long timestamp) {
-
+    private void sendPulsarMessage(MessageId received, MetroAtsProtos.MetroEstimate estimate, long timestamp, String key) {
         producer.newMessage()
-                //.key(dvjId) //TODO think about this
+                .key(key)
                 .eventTime(timestamp)
-                .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, ProtobufSchema.HfpData.toString())
-                .value(hfp.toByteArray())
+                .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, ProtobufSchema.MetroAtsEstimate.toString())
+                .property(TransitdataProperties.KEY_SCHEMA_VERSION, Integer.toString(estimate.getSchemaVersion()))
+                .value(estimate.toByteArray())
                 .sendAsync()
                 .whenComplete((MessageId id, Throwable t) -> {
                     if (t != null) {
                         log.error("Failed to send Pulsar message", t);
+                        // TODO:
                         //Should we abort?
                     }
                     else {

@@ -1,10 +1,10 @@
-[![Build Status](https://travis-ci.org/HSLdevcom/transitdata-hfp-parser.svg?branch=master)](https://travis-ci.org/HSLdevcom/transitdata-hfp-parser)
+[![Build Status](https://travis-ci.org/HSLdevcom/transitdata-metro-ats-parser.svg?branch=master)](https://travis-ci.org/HSLdevcom/transitdata-metro-ats-parser)
 
-# Transitdata-hfp-parser
+# Transitdata-metro-ats-parser
 
 ## Description
 
-Application for parsing HFP Messages from MQTT raw messages. Messages are read
+Application for parsing metro messages from MQTT raw messages. Messages are read
 from one Pulsar topic and the output is written to another Pulsar topic.
 
 ## Building

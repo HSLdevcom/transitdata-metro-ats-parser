@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.hfp;
+package fi.hsl.transitdata.metroats;
 
 import com.typesafe.config.Config;
 import fi.hsl.common.config.ConfigParser;
@@ -10,13 +10,14 @@ public class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
-        log.info("Starting Hfp Parser");
+        log.info("Starting Metro-ats Parser");
         Config config = ConfigParser.createConfig();
         try (PulsarApplication app = PulsarApplication.newInstance(config)) {
 
             PulsarApplicationContext context = app.getContext();
 
-            MessageHandler router = new MessageHandler(context);
+            MetroEstimatesFactory metroEstimatesFactory = new MetroEstimatesFactory(context);
+            MessageHandler router = new MessageHandler(context, metroEstimatesFactory);
 
             log.info("Start handling the messages");
             app.launchWithHandler(router);
