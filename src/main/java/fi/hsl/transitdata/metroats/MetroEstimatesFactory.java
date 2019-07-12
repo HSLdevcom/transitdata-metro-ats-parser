@@ -65,12 +65,14 @@ public class MetroEstimatesFactory {
         // trainType
         Optional<MetroAtsProtos.MetroTrainType> maybeMetroTrainTypeAts = getMetroTrainTypeAts(metroEstimate.trainType);
         if (!maybeMetroTrainTypeAts.isPresent()) {
+            log.warn("metroEstimate.trainType is missing: {}", metroEstimate.trainType);
             return Optional.empty();
         }
         metroEstimateBuilder.setTrainType(maybeMetroTrainTypeAts.get());
         // journeySectionprogress
         Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress);
         if (!maybeMetroAtsProgress.isPresent()) {
+            log.warn("metroEstimate.journeySectionprogress is missing: {}", metroEstimate.journeySectionprogress);
             return Optional.empty();
         }
         metroEstimateBuilder.setJourneySectionprogress(maybeMetroAtsProgress.get());

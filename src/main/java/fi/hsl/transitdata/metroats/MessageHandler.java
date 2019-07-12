@@ -29,7 +29,6 @@ public class MessageHandler implements IMessageHandler {
     public void handleMessage(Message received) throws Exception {
         try {
             if (TransitdataSchema.hasProtobufSchema(received, ProtobufSchema.MqttRawMessage)) {
-
                 final Optional<MetroAtsProtos.MetroEstimate> maybeMetroEstimate = metroEstimatesFactory.toMetroEstimate(received);
 
                     if (maybeMetroEstimate.isPresent()) {
@@ -39,7 +38,7 @@ public class MessageHandler implements IMessageHandler {
                         final MetroAtsProtos.MetroEstimate metroEstimate = maybeMetroEstimate.get();
                         sendPulsarMessage(messageId, metroEstimate, timestamp, key);
                     } else {
-                        log.warn("Received unexpected schema, ignoring.");
+                        log.warn("Parsing MQTTRawMessage has failed, ignoring.");
                         ack(received.getMessageId()); //Ack so we don't receive it again
                     }
             }
