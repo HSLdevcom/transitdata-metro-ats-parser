@@ -84,20 +84,22 @@ public class MetroEstimatesFactory {
             return Optional.empty();
         }
         metroJourneyData.ifPresent(map -> {
+            if (map.containsKey(TransitdataProperties.KEY_OPERATING_DAY))
+                metroEstimateBuilder.setOperatingDay(map.get(TransitdataProperties.KEY_OPERATING_DAY));
+            if (map.containsKey(TransitdataProperties.KEY_START_STOP_NUMBER))
+                metroEstimateBuilder.setStartStopNumber(map.get(TransitdataProperties.KEY_START_STOP_NUMBER));
+            if (map.containsKey(TransitdataProperties.KEY_START_TIME))
+                metroEstimateBuilder.setStartTime(map.get(TransitdataProperties.KEY_START_TIME));
+            if (map.containsKey(TransitdataProperties.KEY_DVJ_ID)) {
+                metroEstimateBuilder.setDvjId(map.get(TransitdataProperties.KEY_DVJ_ID));
+            } if (map.containsKey(TransitdataProperties.KEY_START_STOP_SHORT_NAME))
+                metroEstimateBuilder.setStartStopShortName(map.get(TransitdataProperties.KEY_START_STOP_SHORT_NAME));
+            if (map.containsKey(TransitdataProperties.KEY_ROUTE_NAME))
+                metroEstimateBuilder.setRouteName(map.get(TransitdataProperties.KEY_ROUTE_NAME));
             if (map.containsKey(TransitdataProperties.KEY_START_DATETIME))
                 metroEstimateBuilder.setStartDatetime(map.get(TransitdataProperties.KEY_START_DATETIME));
             if (map.containsKey(TransitdataProperties.KEY_DIRECTION))
                 metroEstimateBuilder.setDirection(map.get(TransitdataProperties.KEY_DIRECTION));
-            if (map.containsKey(TransitdataProperties.KEY_START_STOP_NUMBER))
-                metroEstimateBuilder.setStartStopNumber(map.get(TransitdataProperties.KEY_START_STOP_NUMBER));
-            if (map.containsKey(TransitdataProperties.KEY_START_STOP_SHORT_NAME))
-                metroEstimateBuilder.setStartStopShortName(map.get(TransitdataProperties.KEY_START_STOP_SHORT_NAME));
-            if (map.containsKey(TransitdataProperties.KEY_OPERATING_DAY))
-                metroEstimateBuilder.setOperatingDay(map.get(TransitdataProperties.KEY_OPERATING_DAY));
-            if (map.containsKey(TransitdataProperties.KEY_START_TIME))
-                metroEstimateBuilder.setStartTime(map.get(TransitdataProperties.KEY_START_TIME));
-            if (map.containsKey(TransitdataProperties.KEY_ROUTE_NAME))
-                metroEstimateBuilder.setRouteName(map.get(TransitdataProperties.KEY_ROUTE_NAME));
         });
 
         // routeRows
@@ -139,11 +141,22 @@ public class MetroEstimatesFactory {
         // Set fields from mqtt-pulsar-gateway into metroStopEstimateBuilder
         metroStopEstimateBuilder.setStation((metroStopEstimate.station));
         metroStopEstimateBuilder.setPlatform((metroStopEstimate.platform));
+
         metroStopEstimateBuilder.setArrivalTimePlanned(metroStopEstimate.arrivalTimePlanned);
-        metroStopEstimateBuilder.setArrivalTimeForecast(metroStopEstimate.arrivalTimeForecast);
+        // ArrivalTimeForecast (can be "null" or "")
+        if (!metroStopEstimate.arrivalTimeForecast.equals("null") && !metroStopEstimate.arrivalTimeForecast.isEmpty()) {
+            metroStopEstimateBuilder.setArrivalTimeForecast(metroStopEstimate.arrivalTimeForecast);
+        } else {
+            metroStopEstimateBuilder.setArrivalTimeForecast("");
+        }
         metroStopEstimateBuilder.setArrivalTimeMeasured((metroStopEstimate.arrivalTimeMeasured));
         metroStopEstimateBuilder.setDepartureTimePlanned(metroStopEstimate.departureTimePlanned);
-        metroStopEstimateBuilder.setDepartureTimeForecast(metroStopEstimate.departureTimeForecast);
+        // DepartureTimeForecast (can be "null" or "")
+        if (!metroStopEstimate.departureTimeForecast.equals("null") && !metroStopEstimate.departureTimeForecast.isEmpty()) {
+            metroStopEstimateBuilder.setDepartureTimeForecast(metroStopEstimate.departureTimeForecast);
+        } else {
+            metroStopEstimateBuilder.setDepartureTimeForecast("");
+        }
         metroStopEstimateBuilder.setDepartureTimeMeasured(metroStopEstimate.departureTimeMeasured);
         metroStopEstimateBuilder.setSource(metroStopEstimate.source);
         // rowProgress
