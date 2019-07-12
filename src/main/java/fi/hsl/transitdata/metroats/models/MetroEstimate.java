@@ -3,7 +3,6 @@ package fi.hsl.transitdata.metroats.models;
 import java.util.List;
 
 public class MetroEstimate {
-    public int schemaVersion;
     public String routeName;
     public MetroTrainType trainType;
     public MetroProgress journeySectionprogress;
