@@ -52,7 +52,8 @@ public class MetroEstimatesFactory {
     private Optional<MetroAtsProtos.MetroEstimate> toMetroEstimate(final MetroEstimate metroEstimate) throws Exception {
         final String[] stopShortNames = metroEstimate.routeName.split("-");
         if (stopShortNames.length != 2) {
-            throw new IllegalArgumentException(String.format("Failed to parse metro estimate route name %s.", metroEstimate.routeName));
+            log.warn("Failed to parse metro estimate route name {}", metroEstimate.routeName);
+            return Optional.empty();
         }
         final String startStopShortName = stopShortNames[0];
         final String startDatetime = metroEstimate.beginTime;
