@@ -62,7 +62,7 @@ public class MetroEstimatesFactory {
         MetroAtsProtos.MetroEstimate.Builder metroEstimateBuilder = MetroAtsProtos.MetroEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroEstimateBuilder
-        metroEstimateBuilder.setSchemaVersion(metroEstimate.schemaVersion);
+        metroEstimateBuilder.setSchemaVersion(metroEstimateBuilder.getSchemaVersion());
         // trainType
         Optional<MetroAtsProtos.MetroTrainType> maybeMetroTrainTypeAts = getMetroTrainTypeAts(metroEstimate.trainType);
         if (!maybeMetroTrainTypeAts.isPresent()) {
