@@ -115,7 +115,7 @@ public class MetroEstimatesFactory {
                 metroStopEstimates.add(maybeMetroStopEstimate.get());
             }
         };
-        metroEstimateBuilder.addAllMetroRow(metroStopEstimates);
+        metroEstimateBuilder.addAllMetroRows(metroStopEstimates);
 
         return Optional.of(metroEstimateBuilder.build());
     }
