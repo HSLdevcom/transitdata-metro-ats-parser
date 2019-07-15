@@ -56,9 +56,19 @@ public class MetroEstimatesFactory {
             return Optional.empty();
         }
         final String startStopShortName = stopShortNames[0];
-        final String startDatetime = metroEstimate.beginTime;
-        final String metroId = TransitdataProperties.formatMetroId(startStopShortName, startDatetime);
+        final String endStopShortName = stopShortNames[1];
 
+        // Create a metroKey to be used for Redis Query
+        String metroKey;
+        Optional<String> maybeStopNumber = MetroUtils.getStopNumber(startStopShortName, startStopShortName, endStopShortName);
+        if (maybeStopNumber.isPresent()) {
+            String stopNumber = maybeStopNumber.get();
+            final String startDatetime = metroEstimate.beginTime;
+            metroKey = TransitdataProperties.formatMetroId(stopNumber, startDatetime);
+        } else {
+            log.warn("Failed to get stop number for stop shortNames: startStopShortName: {}, endStopShortName: {}", startStopShortName, endStopShortName);
+            return Optional.empty();
+        }
         MetroAtsProtos.MetroEstimate.Builder metroEstimateBuilder = MetroAtsProtos.MetroEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroEstimateBuilder
@@ -79,11 +89,12 @@ public class MetroEstimatesFactory {
         metroEstimateBuilder.setJourneySectionprogress(maybeMetroAtsProgress.get());
         metroEstimateBuilder.setBeginTime(metroEstimate.beginTime);
         metroEstimateBuilder.setEndTime(metroEstimate.endTime);
+        metroEstimateBuilder.setStartStopShortName(startStopShortName);
 
         // Set fields from Redis into metroEstimateBuilder
-        Optional<Map<String, String>> metroJourneyData = getMetroJourneyData(metroId);
+        Optional<Map<String, String>> metroJourneyData = getMetroJourneyData(metroKey);
         if(!metroJourneyData.isPresent()) {
-            log.warn("Couldn't read metroJourneyData from redis. Metro ID: {}, redis map: {}.", metroId, metroJourneyData);
+            log.warn("Couldn't read metroJourneyData from redis. Metro key: {}, redis map: {}.", metroKey, metroJourneyData);
             return Optional.empty();
         }
         metroJourneyData.ifPresent(map -> {
@@ -93,9 +104,9 @@ public class MetroEstimatesFactory {
                 metroEstimateBuilder.setStartStopNumber(map.get(TransitdataProperties.KEY_START_STOP_NUMBER));
             if (map.containsKey(TransitdataProperties.KEY_START_TIME))
                 metroEstimateBuilder.setStartTime(map.get(TransitdataProperties.KEY_START_TIME));
-            if (map.containsKey(TransitdataProperties.KEY_DVJ_ID)) {
+            if (map.containsKey(TransitdataProperties.KEY_DVJ_ID))
                 metroEstimateBuilder.setDvjId(map.get(TransitdataProperties.KEY_DVJ_ID));
-            } if (map.containsKey(TransitdataProperties.KEY_START_STOP_SHORT_NAME))
+            if (map.containsKey(TransitdataProperties.KEY_START_STOP_SHORT_NAME))
                 metroEstimateBuilder.setStartStopShortName(map.get(TransitdataProperties.KEY_START_STOP_SHORT_NAME));
             if (map.containsKey(TransitdataProperties.KEY_ROUTE_NAME))
                 metroEstimateBuilder.setRouteName(map.get(TransitdataProperties.KEY_ROUTE_NAME));
@@ -196,8 +207,8 @@ public class MetroEstimatesFactory {
     }
 
 
-    private Optional<Map<String, String>> getMetroJourneyData(final String metroId) {
-        Map<String, String> redisMap = jedis.hgetAll(metroId);
+    private Optional<Map<String, String>> getMetroJourneyData(final String metroKey) {
+        Map<String, String> redisMap = jedis.hgetAll(metroKey);
         if (redisMap.isEmpty()) {
             return Optional.empty();
         }

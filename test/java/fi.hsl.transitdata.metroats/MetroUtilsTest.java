@@ -1,0 +1,50 @@
+package fi.hsl.transitdata.metroats;
+
+import org.junit.Test;
+
+import java.util.List;
+
+import static org.junit.Assert.*;
+
+public class MetroUtilsTest {
+
+    @Test
+    public void getShortName() {
+        assertEquals("MAK", MetroUtils.getShortName("2314601").get());
+        assertEquals("MAK", MetroUtils.getShortName("2314602").get());
+        assertFalse(MetroUtils.getShortName("1234567").isPresent());
+    }
+
+    @Test
+    public void getStopNumbers() {
+        final List<String> stopNumbers = MetroUtils.getStopNumbers("MAK");
+        assertEquals(2, stopNumbers.size());
+        assertEquals("2314601", stopNumbers.get(0));
+        assertEquals("2314602", stopNumbers.get(1));
+        assertTrue(MetroUtils.getStopNumbers("FOO").isEmpty());
+    }
+
+    @Test
+    public void getJoreDirection() {
+        assertEquals(1, MetroUtils.getJoreDirection("MAK", "VS").get().intValue());
+        assertEquals(1, MetroUtils.getJoreDirection("TAP", "MM").get().intValue());
+        assertEquals(1, MetroUtils.getJoreDirection("IK", "VS").get().intValue());
+        assertEquals(1, MetroUtils.getJoreDirection("IK", "MM").get().intValue());
+        assertEquals(2, MetroUtils.getJoreDirection("VS", "MAK").get().intValue());
+        assertEquals(2, MetroUtils.getJoreDirection("MM", "TAP").get().intValue());
+        assertEquals(2, MetroUtils.getJoreDirection("VS", "IK").get().intValue());
+        assertEquals(2, MetroUtils.getJoreDirection("MM", "IK").get().intValue());
+        assertFalse(MetroUtils.getJoreDirection("MAK", "MAK").isPresent());
+        assertFalse(MetroUtils.getJoreDirection("MAK", "FOO").isPresent());
+        assertFalse(MetroUtils.getJoreDirection("FOO", "MAK").isPresent());
+    }
+
+    @Test
+    public void getStopNumber() {
+        assertEquals("2211601", MetroUtils.getStopNumber("TAP", "MAK", "VS").get());
+        assertEquals("1020604", MetroUtils.getStopNumber("HY", "MM", "TAP").get());
+        assertFalse(MetroUtils.getStopNumber("TAP", "MAK", "MAK").isPresent());
+        assertFalse(MetroUtils.getStopNumber("TAP", "MAK", "FOO").isPresent());
+        assertFalse(MetroUtils.getStopNumber("FOO", "MAK", "VS").isPresent());
+    }
+}
