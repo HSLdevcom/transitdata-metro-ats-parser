@@ -106,8 +106,6 @@ public class MetroEstimatesFactory {
                 metroEstimateBuilder.setStartTime(map.get(TransitdataProperties.KEY_START_TIME));
             if (map.containsKey(TransitdataProperties.KEY_DVJ_ID))
                 metroEstimateBuilder.setDvjId(map.get(TransitdataProperties.KEY_DVJ_ID));
-            if (map.containsKey(TransitdataProperties.KEY_START_STOP_SHORT_NAME))
-                metroEstimateBuilder.setStartStopShortName(map.get(TransitdataProperties.KEY_START_STOP_SHORT_NAME));
             if (map.containsKey(TransitdataProperties.KEY_ROUTE_NAME))
                 metroEstimateBuilder.setRouteName(map.get(TransitdataProperties.KEY_ROUTE_NAME));
             if (map.containsKey(TransitdataProperties.KEY_START_DATETIME))
