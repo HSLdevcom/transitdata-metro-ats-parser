@@ -4,16 +4,26 @@ import com.typesafe.config.Config;
 import fi.hsl.common.config.ConfigParser;
 import fi.hsl.common.transitdata.PubtransFactory;
 import org.apache.pulsar.shade.com.google.common.collect.ArrayListMultimap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
 public class MetroUtils {
+    private static final Logger log = LoggerFactory.getLogger(MetroUtils.class);
+
     private static final HashMap<String, String> shortNameByStopNumber = new HashMap<>();
     private static final ArrayListMultimap<String, String> stopNumbersByShortName = ArrayListMultimap.create();
     private static final List<String> shortNames = new ArrayList<>();
+    private static final DateTimeFormatter dateTimeFormatter;
 
     static {
         final Config stopsConfig = ConfigParser.createConfig("metro_stops.conf");
@@ -28,6 +38,10 @@ public class MetroUtils {
                         stopNumbersByShortName.put(shortName, stopNumber);
                     });
                 });
+        final Config config = ConfigParser.createConfig();
+        final String timeZone = config.getString("application.timezone");
+        final ZoneId zone = ZoneId.of(timeZone);
+        dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(zone);
     }
 
     private MetroUtils() {}
@@ -67,5 +81,20 @@ public class MetroUtils {
     public static Optional<String> getStopNumber(final String shortName, final String startStopShortName, final String endStopShortName) {
         final Optional<Integer> joreDirection = getJoreDirection(startStopShortName, endStopShortName);
         return joreDirection.isPresent() ? getStopNumber(shortName, joreDirection.get()) : Optional.empty();
+    }
+
+    public static Optional<String> toUtcDatetime(String localDatetime) {
+        if (localDatetime == null || localDatetime.isEmpty() || localDatetime.equals("null")) {
+            return Optional.empty();
+        }
+
+        try {
+            ZonedDateTime zonedDateTime = ZonedDateTime.parse(localDatetime, dateTimeFormatter).withZoneSameInstant(ZoneOffset.UTC);
+            return Optional.of(zonedDateTime.toString());
+        }
+        catch (Exception e) {
+            log.error(String.format("Failed to parse datetime from %s", localDatetime), e);
+            return Optional.empty();
+        }
     }
 }

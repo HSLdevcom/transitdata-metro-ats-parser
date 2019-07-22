@@ -213,7 +213,7 @@ public class MetroEstimatesFactory {
         return Optional.ofNullable(redisMap);
     }
 
-    private Optional<MetroEstimate> parsePayload(final byte[] payload) {
+    public static Optional<MetroEstimate> parsePayload(final byte[] payload) {
         try {
             MetroEstimate metroEstimate = mapper.readValue(payload, MetroEstimate.class);
             return Optional.of(metroEstimate);
