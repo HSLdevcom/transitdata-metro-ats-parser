@@ -24,6 +24,10 @@ public class MetroUtils {
     private static final ArrayListMultimap<String, String> stopNumbersByShortName = ArrayListMultimap.create();
     private static final List<String> shortNames = new ArrayList<>();
     private static final DateTimeFormatter dateTimeFormatter;
+    private static final DateTimeFormatter localDateTimeFormatter;
+    private static final DateTimeFormatter utcDateTimeFormatter;
+    private static final ZoneId localZoneId;
+    private static final ZoneId utcZoneId;
 
     static {
         final Config stopsConfig = ConfigParser.createConfig("metro_stops.conf");
@@ -39,9 +43,13 @@ public class MetroUtils {
                     });
                 });
         final Config config = ConfigParser.createConfig();
-        final String timeZone = config.getString("application.timezone");
-        final ZoneId zone = ZoneId.of(timeZone);
-        dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(zone);
+        final String localTimeZone = config.getString("application.timezone");
+        localZoneId = ZoneId.of(localTimeZone);
+        utcZoneId = ZoneId.of("UTC");
+        dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        localDateTimeFormatter = dateTimeFormatter.withZone(localZoneId);
+        utcDateTimeFormatter = dateTimeFormatter.withZone(utcZoneId);
+
     }
 
     private MetroUtils() {}
@@ -83,18 +91,26 @@ public class MetroUtils {
         return joreDirection.isPresent() ? getStopNumber(shortName, joreDirection.get()) : Optional.empty();
     }
 
-    public static Optional<String> toUtcDatetime(String localDatetime) {
-        if (localDatetime == null || localDatetime.isEmpty() || localDatetime.equals("null")) {
+    public static Optional<String> convertDatetime(final String datetime, final DateTimeFormatter formatter, final ZoneId toZoneId) {
+        if (datetime == null || datetime.isEmpty() || datetime.equals("null")) {
             return Optional.empty();
         }
 
         try {
-            ZonedDateTime zonedDateTime = ZonedDateTime.parse(localDatetime, dateTimeFormatter).withZoneSameInstant(ZoneOffset.UTC);
-            return Optional.of(zonedDateTime.toString());
+            final ZonedDateTime zonedDateTime = ZonedDateTime.parse(datetime, formatter).withZoneSameInstant(toZoneId);
+            return Optional.of(zonedDateTime.format(dateTimeFormatter));
         }
         catch (Exception e) {
-            log.error(String.format("Failed to parse datetime from %s", localDatetime), e);
+            log.error(String.format("Failed to parse datetime from %s", datetime), e);
             return Optional.empty();
         }
+    }
+
+    public static Optional<String> toUtcDatetime(final String localDatetime) {
+        return convertDatetime(localDatetime, localDateTimeFormatter, utcZoneId);
+    }
+
+    public static Optional<String> toLocalDatetime(final String utcDatetime) {
+        return convertDatetime(utcDatetime, utcDateTimeFormatter, localZoneId);
     }
 }

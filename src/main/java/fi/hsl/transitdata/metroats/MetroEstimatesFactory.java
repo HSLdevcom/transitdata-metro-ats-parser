@@ -63,8 +63,15 @@ public class MetroEstimatesFactory {
         Optional<String> maybeStopNumber = MetroUtils.getStopNumber(startStopShortName, startStopShortName, endStopShortName);
         if (maybeStopNumber.isPresent()) {
             String stopNumber = maybeStopNumber.get();
-            final String startDatetime = metroEstimate.beginTime;
-            metroKey = TransitdataProperties.formatMetroId(stopNumber, startDatetime);
+            // Convert UTC datetime to local datetime because the keys in Redis have local datetime
+            final Optional<String> maybeStartDatetime = MetroUtils.toLocalDatetime(metroEstimate.beginTime);
+            if (maybeStartDatetime.isPresent()) {
+                final String startDatetime = maybeStartDatetime.get();
+                metroKey = TransitdataProperties.formatMetroId(stopNumber, startDatetime);
+            } else {
+                log.warn("Failed to convert UTC datetime {} to local datetime", metroEstimate.beginTime);
+                return Optional.empty();
+            }
         } else {
             log.warn("Failed to get stop number for stop shortNames: startStopShortName: {}, endStopShortName: {}", startStopShortName, endStopShortName);
             return Optional.empty();
@@ -123,7 +130,7 @@ public class MetroEstimatesFactory {
             } else {
                 metroStopEstimates.add(maybeMetroStopEstimate.get());
             }
-        };
+        }
         metroEstimateBuilder.addAllMetroRows(metroStopEstimates);
 
         return Optional.of(metroEstimateBuilder.build());
@@ -154,22 +161,36 @@ public class MetroEstimatesFactory {
         metroStopEstimateBuilder.setStation((metroStopEstimate.station));
         metroStopEstimateBuilder.setPlatform((metroStopEstimate.platform));
 
-        metroStopEstimateBuilder.setArrivalTimePlanned(metroStopEstimate.arrivalTimePlanned);
-        // ArrivalTimeForecast (can be "null" or "")
-        if (!metroStopEstimate.arrivalTimeForecast.equals("null") && !metroStopEstimate.arrivalTimeForecast.isEmpty()) {
+        if (validateDatetime(metroStopEstimate.arrivalTimePlanned)) {
+            metroStopEstimateBuilder.setArrivalTimePlanned(metroStopEstimate.arrivalTimePlanned);
+        } else {
+            metroStopEstimateBuilder.setArrivalTimePlanned("");
+        }
+        if (validateDatetime(metroStopEstimate.arrivalTimeForecast)) {
             metroStopEstimateBuilder.setArrivalTimeForecast(metroStopEstimate.arrivalTimeForecast);
         } else {
             metroStopEstimateBuilder.setArrivalTimeForecast("");
         }
-        metroStopEstimateBuilder.setArrivalTimeMeasured((metroStopEstimate.arrivalTimeMeasured));
-        metroStopEstimateBuilder.setDepartureTimePlanned(metroStopEstimate.departureTimePlanned);
-        // DepartureTimeForecast (can be "null" or "")
-        if (!metroStopEstimate.departureTimeForecast.equals("null") && !metroStopEstimate.departureTimeForecast.isEmpty()) {
+        if (validateDatetime(metroStopEstimate.arrivalTimeMeasured)) {
+            metroStopEstimateBuilder.setArrivalTimeMeasured(metroStopEstimate.arrivalTimeMeasured);
+        } else {
+            metroStopEstimateBuilder.setArrivalTimeMeasured("");
+        }
+        if (validateDatetime(metroStopEstimate.departureTimePlanned)) {
+            metroStopEstimateBuilder.setDepartureTimePlanned(metroStopEstimate.departureTimePlanned);
+        } else {
+            metroStopEstimateBuilder.setDepartureTimePlanned("");
+        }
+        if (validateDatetime(metroStopEstimate.departureTimeForecast)) {
             metroStopEstimateBuilder.setDepartureTimeForecast(metroStopEstimate.departureTimeForecast);
         } else {
             metroStopEstimateBuilder.setDepartureTimeForecast("");
         }
-        metroStopEstimateBuilder.setDepartureTimeMeasured(metroStopEstimate.departureTimeMeasured);
+        if (validateDatetime(metroStopEstimate.departureTimeMeasured)) {
+            metroStopEstimateBuilder.setDepartureTimeMeasured(metroStopEstimate.departureTimeMeasured);
+        } else {
+            metroStopEstimateBuilder.setDepartureTimeMeasured("");
+        }
         metroStopEstimateBuilder.setSource(metroStopEstimate.source);
         // rowProgress
         Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress);
@@ -179,6 +200,10 @@ public class MetroEstimatesFactory {
         metroStopEstimateBuilder.setRowProgress(maybeMetroAtsProgress.get());
 
         return Optional.of(metroStopEstimateBuilder.build());
+    }
+
+    private boolean validateDatetime(final String datetime) {
+        return datetime != null && !datetime.equals("null") && !datetime.isEmpty();
     }
 
     private Optional<MetroAtsProtos.MetroProgress> getMetroAtsProgress(MetroProgress metroProgress) {

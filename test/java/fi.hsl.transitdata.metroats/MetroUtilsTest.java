@@ -63,4 +63,12 @@ public class MetroUtilsTest {
         final Optional<String> maybeUtcDateTime = MetroUtils.toUtcDatetime(localDateTime);
         assertFalse(maybeUtcDateTime.isPresent());
     }
+
+    @Test
+    public void testUtcDatetimeToLocalDateTime() {
+        final String utcDateTime = "2019-07-18T12:38:30.632Z";
+        final Optional<String> maybeLocalDateTime = MetroUtils.toLocalDatetime(utcDateTime);
+        assertTrue(maybeLocalDateTime.isPresent());
+        assertEquals("2019-07-18T15:38:30.632Z", maybeLocalDateTime.get());
+    }
 }
