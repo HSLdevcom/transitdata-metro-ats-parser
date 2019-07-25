@@ -4,16 +4,30 @@ import com.typesafe.config.Config;
 import fi.hsl.common.config.ConfigParser;
 import fi.hsl.common.transitdata.PubtransFactory;
 import org.apache.pulsar.shade.com.google.common.collect.ArrayListMultimap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
 public class MetroUtils {
+    private static final Logger log = LoggerFactory.getLogger(MetroUtils.class);
+
     private static final HashMap<String, String> shortNameByStopNumber = new HashMap<>();
     private static final ArrayListMultimap<String, String> stopNumbersByShortName = ArrayListMultimap.create();
     private static final List<String> shortNames = new ArrayList<>();
+    private static final DateTimeFormatter dateTimeFormatter;
+    private static final DateTimeFormatter localDateTimeFormatter;
+    private static final DateTimeFormatter utcDateTimeFormatter;
+    private static final ZoneId localZoneId;
+    private static final ZoneId utcZoneId;
 
     static {
         final Config stopsConfig = ConfigParser.createConfig("metro_stops.conf");
@@ -28,6 +42,14 @@ public class MetroUtils {
                         stopNumbersByShortName.put(shortName, stopNumber);
                     });
                 });
+        final Config config = ConfigParser.createConfig();
+        final String localTimeZone = config.getString("application.timezone");
+        localZoneId = ZoneId.of(localTimeZone);
+        utcZoneId = ZoneId.of("UTC");
+        dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        localDateTimeFormatter = dateTimeFormatter.withZone(localZoneId);
+        utcDateTimeFormatter = dateTimeFormatter.withZone(utcZoneId);
+
     }
 
     private MetroUtils() {}
@@ -67,5 +89,28 @@ public class MetroUtils {
     public static Optional<String> getStopNumber(final String shortName, final String startStopShortName, final String endStopShortName) {
         final Optional<Integer> joreDirection = getJoreDirection(startStopShortName, endStopShortName);
         return joreDirection.isPresent() ? getStopNumber(shortName, joreDirection.get()) : Optional.empty();
+    }
+
+    public static Optional<String> convertDatetime(final String datetime, final DateTimeFormatter formatter, final ZoneId toZoneId) {
+        if (datetime == null || datetime.isEmpty() || datetime.equals("null")) {
+            return Optional.empty();
+        }
+
+        try {
+            final ZonedDateTime zonedDateTime = ZonedDateTime.parse(datetime, formatter).withZoneSameInstant(toZoneId);
+            return Optional.of(zonedDateTime.format(dateTimeFormatter));
+        }
+        catch (Exception e) {
+            log.error(String.format("Failed to parse datetime from %s", datetime), e);
+            return Optional.empty();
+        }
+    }
+
+    public static Optional<String> toUtcDatetime(final String localDatetime) {
+        return convertDatetime(localDatetime, localDateTimeFormatter, utcZoneId);
+    }
+
+    public static Optional<String> toLocalDatetime(final String utcDatetime) {
+        return convertDatetime(utcDatetime, utcDateTimeFormatter, localZoneId);
     }
 }

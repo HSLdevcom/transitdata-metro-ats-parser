@@ -3,6 +3,7 @@ package fi.hsl.transitdata.metroats;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.Assert.*;
 
@@ -46,5 +47,28 @@ public class MetroUtilsTest {
         assertFalse(MetroUtils.getStopNumber("TAP", "MAK", "MAK").isPresent());
         assertFalse(MetroUtils.getStopNumber("TAP", "MAK", "FOO").isPresent());
         assertFalse(MetroUtils.getStopNumber("FOO", "MAK", "VS").isPresent());
+    }
+
+    @Test
+    public void testLocalDateTimeToUtcDatetime() {
+        final String localDateTime = "2019-07-18T15:38:30.632Z";
+        final Optional<String> maybeUtcDateTime = MetroUtils.toUtcDatetime(localDateTime);
+        assertTrue(maybeUtcDateTime.isPresent());
+        assertEquals("2019-07-18T12:38:30.632Z", maybeUtcDateTime.get());
+    }
+
+    @Test
+    public void testInvalidDateTimeToUtcDatetime() {
+        final String localDateTime = "2019-07-18T15:38:30Z";
+        final Optional<String> maybeUtcDateTime = MetroUtils.toUtcDatetime(localDateTime);
+        assertFalse(maybeUtcDateTime.isPresent());
+    }
+
+    @Test
+    public void testUtcDatetimeToLocalDateTime() {
+        final String utcDateTime = "2019-07-18T12:38:30.632Z";
+        final Optional<String> maybeLocalDateTime = MetroUtils.toLocalDatetime(utcDateTime);
+        assertTrue(maybeLocalDateTime.isPresent());
+        assertEquals("2019-07-18T15:38:30.632Z", maybeLocalDateTime.get());
     }
 }
