@@ -14,12 +14,12 @@ public class MetroEstimate {
     public List<MetroStopEstimate> routeRows;
 
     public void setBeginTime(String beginTime) {
-        Optional<String> maybeBeginTime = MetroUtils.toUtcDatetime(beginTime);
+        Optional<String> maybeBeginTime = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(beginTime);
         this.beginTime = maybeBeginTime.orElse(null);
     }
 
     public void setEndTime(String endTime) {
-        Optional<String> maybeEndTime = MetroUtils.toUtcDatetime(endTime);
+        Optional<String> maybeEndTime = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(endTime);
         this.endTime = maybeEndTime.orElse(null);
     }
 }

@@ -24,9 +24,11 @@ public class MetroUtils {
     private static final ArrayListMultimap<String, String> stopNumbersByShortName = ArrayListMultimap.create();
     private static final List<String> shortNames = new ArrayList<>();
     private static final DateTimeFormatter dateTimeFormatter;
-    private static final DateTimeFormatter localDateTimeFormatter;
+    private static final DateTimeFormatter metroAtsDateTimeFormatter;
+    private static final DateTimeFormatter pubtransDateTimeFormatter;
     private static final DateTimeFormatter utcDateTimeFormatter;
-    private static final ZoneId localZoneId;
+    private static final ZoneId metroAtsZoneId;
+    private static final ZoneId pubtransZoneId;
     private static final ZoneId utcZoneId;
 
     static {
@@ -43,13 +45,15 @@ public class MetroUtils {
                     });
                 });
         final Config config = ConfigParser.createConfig();
-        final String localTimeZone = config.getString("application.timezone");
-        localZoneId = ZoneId.of(localTimeZone);
+        final String metroAtsTimeZone = config.getString("application.metroAtstimezone");
+        final String pubtransTimeZone = config.getString("application.pubtransTimezone");
+        metroAtsZoneId = ZoneId.of(metroAtsTimeZone);
+        pubtransZoneId = ZoneId.of(pubtransTimeZone);
         utcZoneId = ZoneId.of("UTC");
         dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-        localDateTimeFormatter = dateTimeFormatter.withZone(localZoneId);
+        metroAtsDateTimeFormatter = dateTimeFormatter.withZone(metroAtsZoneId);
+        pubtransDateTimeFormatter = dateTimeFormatter.withZone(pubtransZoneId);
         utcDateTimeFormatter = dateTimeFormatter.withZone(utcZoneId);
-
     }
 
     private MetroUtils() {}
@@ -106,11 +110,11 @@ public class MetroUtils {
         }
     }
 
-    public static Optional<String> toUtcDatetime(final String localDatetime) {
-        return convertDatetime(localDatetime, localDateTimeFormatter, utcZoneId);
+    public static Optional<String> convertMetroAtsDatetimeToUtcDatetime(final String metroAtsDatetime) {
+        return convertDatetime(metroAtsDatetime, metroAtsDateTimeFormatter, utcZoneId);
     }
 
-    public static Optional<String> toLocalDatetime(final String utcDatetime) {
-        return convertDatetime(utcDatetime, utcDateTimeFormatter, localZoneId);
+    public static Optional<String> convertUtcDatetimeToPubtransDatetime(final String utcDatetime) {
+        return convertDatetime(utcDatetime, utcDateTimeFormatter, pubtransZoneId);
     }
 }

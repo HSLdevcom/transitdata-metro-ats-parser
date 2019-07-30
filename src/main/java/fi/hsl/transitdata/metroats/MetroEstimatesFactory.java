@@ -64,7 +64,7 @@ public class MetroEstimatesFactory {
         if (maybeStopNumber.isPresent()) {
             String stopNumber = maybeStopNumber.get();
             // Convert UTC datetime to local datetime because the keys in Redis have local datetime
-            final Optional<String> maybeStartDatetime = MetroUtils.toLocalDatetime(metroEstimate.beginTime);
+            final Optional<String> maybeStartDatetime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.beginTime);
             if (maybeStartDatetime.isPresent()) {
                 final String startDatetime = maybeStartDatetime.get();
                 metroKey = TransitdataProperties.formatMetroId(stopNumber, startDatetime);
