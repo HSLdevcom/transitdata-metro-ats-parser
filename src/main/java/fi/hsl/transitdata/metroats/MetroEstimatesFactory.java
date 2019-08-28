@@ -206,6 +206,9 @@ public class MetroEstimatesFactory {
         if (!maybeStopNumber.isPresent()) {
             log.warn("Couldn't find stopNumber for shortName: {} direction: {} ", shortName, direction);
             return Optional.empty();
+        } else {
+            // TODO: remove this logging when stopNumbers work
+            log.warn("Found stopNumber: {} ( for shortName: {} direction: {} )", maybeStopNumber.get(), shortName, direction);
         }
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
