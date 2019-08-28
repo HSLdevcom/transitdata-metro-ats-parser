@@ -131,13 +131,35 @@ public class MetroEstimatesFactory {
         // routeRows
         List<MetroAtsProtos.MetroStopEstimate> metroStopEstimates = new ArrayList<>();
         for (MetroStopEstimate metroStopEstimate : metroEstimate.routeRows) {
-            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction);
+            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName);
             if (!maybeMetroStopEstimate.isPresent()) {
                     return Optional.empty();
             } else {
                 metroStopEstimates.add(maybeMetroStopEstimate.get());
             }
         }
+
+        Boolean isSomeStopNumbersDifferent = false;
+        String previousStopNumber = metroStopEstimates.get(0).getStopNumber();
+        int index = 0;
+        for (MetroAtsProtos.MetroStopEstimate estimate : metroStopEstimates) {
+            if (index > 0) {
+                String currentStopNumber = estimate.getStopNumber();
+                if (!previousStopNumber.equals(currentStopNumber)) {
+                    isSomeStopNumbersDifferent = true;
+                } else {
+                    log.warn("Equal estimate pair found");
+                }
+                previousStopNumber = currentStopNumber;
+            }
+            index++;
+        }
+        if (isSomeStopNumbersDifferent) {
+            log.warn("Stop estimates were not the same. BeginTime: {} startStopShortName: {} ", metroEstimate.beginTime, startStopShortName);
+        } else {
+            log.warn("Stop estimates were equal. BeginTime: {} startStopShortName: {} ", metroEstimate.beginTime, startStopShortName);
+        }
+
         metroEstimateBuilder.addAllMetroRows(metroStopEstimates);
 
         return Optional.of(metroEstimateBuilder.build());
@@ -161,7 +183,7 @@ public class MetroEstimatesFactory {
         return maybeMetroTrainTypeAts;
     }
 
-    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction) {
+    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction, String beginTime, String startStopShortName) {
         MetroAtsProtos.MetroStopEstimate.Builder metroStopEstimateBuilder = MetroAtsProtos.MetroStopEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroStopEstimateBuilder
@@ -204,11 +226,11 @@ public class MetroEstimatesFactory {
         String shortName = metroStopEstimate.station;
         Optional<String> maybeStopNumber = MetroUtils.getStopNumber(shortName, direction);
         if (!maybeStopNumber.isPresent()) {
-            log.warn("Couldn't find stopNumber for shortName: {} direction: {} ", shortName, direction);
+            log.warn("Couldn't find stopNumber for shortName: {} direction: {} beginTime: {} startStopShortName: {} ", shortName, direction, beginTime, startStopShortName);
             return Optional.empty();
         } else {
             // TODO: remove this logging when stopNumbers work
-            log.warn("Found stopNumber: {} ( for shortName: {} direction: {} )", maybeStopNumber.get(), shortName, direction);
+            log.warn("Found stopNumber: {} for shortName: {} direction: {} beginTime: {} startStopShortName: {}" , maybeStopNumber.get(), shortName, direction, beginTime, startStopShortName);
         }
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
