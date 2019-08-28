@@ -155,7 +155,7 @@ public class MetroEstimatesFactory {
             index++;
         }
         if (isSomeStopNumbersDifferent) {
-            log.warn("Stop estimates were not the same. BeginTime: {} startStopShortName: {} ", metroEstimate.beginTime, startStopShortName);
+            // log.warn("Stop estimates were not the same. BeginTime: {} startStopShortName: {} ", metroEstimate.beginTime, startStopShortName);
         } else {
             log.warn("Stop estimates were equal. BeginTime: {} startStopShortName: {} ", metroEstimate.beginTime, startStopShortName);
         }
@@ -230,7 +230,7 @@ public class MetroEstimatesFactory {
             return Optional.empty();
         } else {
             // TODO: remove this logging when stopNumbers work
-            log.warn("Found stopNumber: {} for shortName: {} direction: {} beginTime: {} startStopShortName: {}" , maybeStopNumber.get(), shortName, direction, beginTime, startStopShortName);
+            // log.warn("Found stopNumber: {} for shortName: {} direction: {} beginTime: {} startStopShortName: {}" , maybeStopNumber.get(), shortName, direction, beginTime, startStopShortName);
         }
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
