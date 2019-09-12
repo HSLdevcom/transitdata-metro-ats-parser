@@ -236,10 +236,7 @@ public class MetroEstimatesFactory {
 
         // rowProgress
         Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress);
-        if (!maybeMetroAtsProgress.isPresent()) {
-            return Optional.empty();
-        }
-        metroStopEstimateBuilder.setRowProgress(maybeMetroAtsProgress.get());
+        maybeMetroAtsProgress.ifPresent(metroStopEstimateBuilder::setRowProgress);
 
         return Optional.of(metroStopEstimateBuilder.build());
     }
