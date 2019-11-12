@@ -139,25 +139,8 @@ public class MetroEstimatesFactory {
             }
         }
 
-        Boolean isSomeStopNumbersDifferent = false;
-        String previousStopNumber = metroStopEstimates.get(0).getStopNumber();
-        int index = 0;
-        for (MetroAtsProtos.MetroStopEstimate estimate : metroStopEstimates) {
-            if (index > 0) {
-                String currentStopNumber = estimate.getStopNumber();
-                if (!previousStopNumber.equals(currentStopNumber)) {
-                    isSomeStopNumbersDifferent = true;
-                } else {
-                    log.warn("Equal estimate pair found");
-                }
-                previousStopNumber = currentStopNumber;
-            }
-            index++;
-        }
-        if (isSomeStopNumbersDifferent) {
-            // log.warn("Stop estimates were not the same. BeginTime: {} startStopShortName: {} ", metroEstimate.beginTime, startStopShortName);
-        } else {
-            log.warn("Stop estimates were equal. BeginTime: {} startStopShortName: {} ", metroEstimate.beginTime, startStopShortName);
+        if (!metroStopEstimates.stream().map(MetroAtsProtos.MetroStopEstimate::getStopNumber).allMatch(new HashSet<>()::add)) {
+            log.warn("Metro {} (beginTime: {}, dir: {}) had multiple estimates for one stop", metroEstimate.routeName, metroEstimate.beginTime, direction);
         }
 
         metroEstimateBuilder.addAllMetroRows(metroStopEstimates);
@@ -226,11 +209,8 @@ public class MetroEstimatesFactory {
         String shortName = metroStopEstimate.station;
         Optional<String> maybeStopNumber = MetroUtils.getStopNumber(shortName, direction);
         if (!maybeStopNumber.isPresent()) {
-            log.warn("Couldn't find stopNumber for shortName: {} direction: {} beginTime: {} startStopShortName: {} ", shortName, direction, beginTime, startStopShortName);
+            log.warn("Couldn't find stopNumber for shortName: {} (Metro: direction {}, beginTime {}, startStopShortName: {})", shortName, direction, beginTime, startStopShortName);
             return Optional.empty();
-        } else {
-            // TODO: remove this logging when stopNumbers work
-            // log.warn("Found stopNumber: {} for shortName: {} direction: {} beginTime: {} startStopShortName: {}" , maybeStopNumber.get(), shortName, direction, beginTime, startStopShortName);
         }
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
