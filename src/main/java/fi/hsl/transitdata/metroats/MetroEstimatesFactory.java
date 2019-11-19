@@ -250,11 +250,16 @@ public class MetroEstimatesFactory {
 
 
     private Optional<Map<String, String>> getMetroJourneyData(final String metroKey) {
-        Map<String, String> redisMap = jedis.hgetAll(metroKey);
-        if (redisMap.isEmpty()) {
+        try {
+            Map<String, String> redisMap = jedis.hgetAll(metroKey);
+            if (redisMap.isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.ofNullable(redisMap);
+        } catch (Exception e) {
+            log.error("Couldn't read metroJourneyData from redis. Metro key: {}", metroKey, e);
             return Optional.empty();
         }
-        return Optional.ofNullable(redisMap);
     }
 
     public static Optional<MetroEstimate> parsePayload(final byte[] payload) {
