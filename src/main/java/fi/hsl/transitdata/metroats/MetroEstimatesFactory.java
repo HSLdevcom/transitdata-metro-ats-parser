@@ -118,7 +118,7 @@ public class MetroEstimatesFactory {
             if (map.containsKey(TransitdataProperties.KEY_DIRECTION))
                 metroEstimateBuilder.setDirection(map.get(TransitdataProperties.KEY_DIRECTION));
         } else {
-            log.warn("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            log.debug("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
 
             MetroUtils.getRouteName(startStopShortName, endStopShortName).ifPresent(metroEstimateBuilder::setRouteName);
             MetroUtils.getJoreDirection(startStopShortName, endStopShortName).map(String::valueOf).ifPresent(metroEstimateBuilder::setDirection);
