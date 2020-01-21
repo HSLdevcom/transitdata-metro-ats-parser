@@ -124,8 +124,10 @@ public class MetroEstimatesFactory {
             MetroUtils.getJoreDirection(startStopShortName, endStopShortName).map(String::valueOf).ifPresent(metroEstimateBuilder::setDirection);
             maybeStopNumber.ifPresent(metroEstimateBuilder::setStartStopNumber);
 
-            String operatingDay = metroEstimate.beginTime.substring(0, 10).replaceAll("-", "");
-            String startTime = metroEstimate.beginTime.substring(11, 19);
+            String startDateTime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.beginTime).get();
+
+            String operatingDay = startDateTime.substring(0, 10).replaceAll("-", "");
+            String startTime = startDateTime.substring(11, 19);
 
             metroEstimateBuilder.setOperatingDay(operatingDay);
             metroEstimateBuilder.setStartTime(startTime);
