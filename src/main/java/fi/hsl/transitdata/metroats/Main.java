@@ -15,8 +15,9 @@ public class Main {
         try (PulsarApplication app = PulsarApplication.newInstance(config)) {
 
             PulsarApplicationContext context = app.getContext();
+            boolean addedTripsEnabled = config.getBoolean("application.addedTripsEnabled");;
 
-            MetroEstimatesFactory metroEstimatesFactory = new MetroEstimatesFactory(context);
+            MetroEstimatesFactory metroEstimatesFactory = new MetroEstimatesFactory(context, addedTripsEnabled);
             MessageHandler router = new MessageHandler(context, metroEstimatesFactory);
 
             log.info("Start handling the messages");
