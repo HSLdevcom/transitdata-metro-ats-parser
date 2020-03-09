@@ -23,9 +23,12 @@ public class MetroEstimatesFactory {
 
     private static final ObjectMapper mapper = new ObjectMapper();
     private Jedis jedis;
+    private boolean addedTripsEnabled;
 
-    public MetroEstimatesFactory(final PulsarApplicationContext context) {
+    public MetroEstimatesFactory(final PulsarApplicationContext context, boolean addedTripsEnabled) {
         this.jedis = context.getJedis();
+        this.addedTripsEnabled = addedTripsEnabled;
+        log.info("addedTripsEnabled set to: {}", this.addedTripsEnabled);
     }
 
     public Optional<MetroAtsProtos.MetroEstimate> toMetroEstimate(final Message message) {
@@ -98,13 +101,11 @@ public class MetroEstimatesFactory {
         metroEstimateBuilder.setEndTime(metroEstimate.endTime);
         metroEstimateBuilder.setStartStopShortName(startStopShortName);
 
-        // Set fields from Redis into metroEstimateBuilder
         Optional<Map<String, String>> metroJourneyData = getMetroJourneyData(metroKey);
-        if(!metroJourneyData.isPresent()) {
-            log.warn("Couldn't read metroJourneyData from redis. Metro key: {}, redis map: {}.", metroKey, metroJourneyData);
-            return Optional.empty();
-        }
-        metroJourneyData.ifPresent(map -> {
+        if(metroJourneyData.isPresent()) {
+            // Set fields from Redis into metroEstimateBuilder
+            Map<String, String> map = metroJourneyData.get();
+
             if (map.containsKey(TransitdataProperties.KEY_OPERATING_DAY))
                 metroEstimateBuilder.setOperatingDay(map.get(TransitdataProperties.KEY_OPERATING_DAY));
             if (map.containsKey(TransitdataProperties.KEY_START_STOP_NUMBER))
@@ -119,14 +120,33 @@ public class MetroEstimatesFactory {
                 metroEstimateBuilder.setStartDatetime(map.get(TransitdataProperties.KEY_START_DATETIME));
             if (map.containsKey(TransitdataProperties.KEY_DIRECTION))
                 metroEstimateBuilder.setDirection(map.get(TransitdataProperties.KEY_DIRECTION));
-        });
+        } else if (addedTripsEnabled){
+            log.debug("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            MetroUtils.getRouteName(startStopShortName, endStopShortName).ifPresent(metroEstimateBuilder::setRouteName);
+            MetroUtils.getJoreDirection(startStopShortName, endStopShortName).map(String::valueOf).ifPresent(metroEstimateBuilder::setDirection);
+            maybeStopNumber.ifPresent(metroEstimateBuilder::setStartStopNumber);
 
-        Optional<String> directionString = Optional.of(metroJourneyData.get().get(TransitdataProperties.KEY_DIRECTION));
-        if(!directionString.isPresent()) {
-            log.warn("Couldn't read directionString from metroJourneyData: {}.", directionString);
+            String startDateTime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.beginTime).get();
+
+            String operatingDay = startDateTime.substring(0, 10).replaceAll("-", "");
+            String startTime = startDateTime.substring(11, 19);
+
+            metroEstimateBuilder.setOperatingDay(operatingDay);
+            metroEstimateBuilder.setStartTime(startTime);
+
+            metroEstimateBuilder.setDvjId("metro-"+operatingDay+"-"+startTime+"-"+metroEstimate.routeName+"-"+metroEstimate.trainType.toString());
+
+            metroEstimateBuilder.setScheduled(false);
+        } else {
+            log.debug("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
             return Optional.empty();
         }
-        Integer direction = Integer.parseInt(directionString.get());
+
+        Integer direction = metroJourneyData.map(map -> Integer.parseInt(map.get(TransitdataProperties.KEY_DIRECTION))).orElse(MetroUtils.getJoreDirection(startStopShortName, endStopShortName).orElse(null));
+        if(direction == null) {
+            log.warn("Couldn't read direction from metroJourneyData: {}.", direction);
+            return Optional.empty();
+        }
 
         // routeRows
         List<MetroAtsProtos.MetroStopEstimate> metroStopEstimates = new ArrayList<>();

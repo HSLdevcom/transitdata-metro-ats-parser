@@ -71,4 +71,19 @@ public class MetroUtilsTest {
         assertTrue(maybeLocalDateTime.isPresent());
         assertEquals("2019-07-18T15:38:30.632Z", maybeLocalDateTime.get());
     }
+
+    @Test
+    public void testGetRouteName() {
+        assertEquals("31M1", MetroUtils.getRouteName("VS", "MAK").get());
+        assertEquals("31M1", MetroUtils.getRouteName("MAK", "VS").get());
+        assertEquals("31M1B", MetroUtils.getRouteName("VS", "IK").get());
+        assertEquals("31M1B", MetroUtils.getRouteName("IK", "VS").get());
+        assertEquals("31M2B", MetroUtils.getRouteName("MM", "IK").get());
+        assertEquals("31M2B", MetroUtils.getRouteName("IK", "MM").get());
+        assertEquals("31M2", MetroUtils.getRouteName("MM", "TAP").get());
+        assertEquals("31M2", MetroUtils.getRouteName("TAP", "MM").get());
+        assertEquals("31M2M", MetroUtils.getRouteName("MM", "MAK").get());
+        assertEquals("31M2M", MetroUtils.getRouteName("MAK", "MM").get());
+        assertFalse(MetroUtils.getRouteName("a", "b").isPresent());
+    }
 }

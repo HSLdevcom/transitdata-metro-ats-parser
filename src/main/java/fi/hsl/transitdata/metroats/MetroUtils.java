@@ -117,4 +117,37 @@ public class MetroUtils {
     public static Optional<String> convertUtcDatetimeToPubtransDatetime(final String utcDatetime) {
         return convertDatetime(utcDatetime, utcDateTimeFormatter, pubtransZoneId);
     }
+
+    public static Optional<String> getRouteName(String startStopName, String endStopName) {
+        Optional<String> routeName = getRouteNameFromStops(startStopName, endStopName);
+        if (routeName.isPresent()) {
+            return routeName;
+        } else {
+            return getRouteNameFromStops(endStopName, startStopName);
+        }
+    }
+
+    private static Optional<String> getRouteNameFromStops(String stop1, String stop2) {
+        if ("MM".equals(stop1)) {
+            if ("TAP".equals(stop2)) {
+                return Optional.of("31M2");
+            } else if ("MAK".equals(stop2)) {
+                return Optional.of("31M2M");
+            } else if ("IK".equals(stop2)) {
+                return Optional.of("31M2B");
+            } else {
+                return Optional.empty();
+            }
+        } else if ("VS".equals(stop1)) {
+            if ("MAK".equals(stop2)) {
+                return Optional.of("31M1");
+            } else if ("IK".equals(stop2)) {
+                return Optional.of("31M1B");
+            } else {
+                return Optional.empty();
+            }
+        } else {
+            return Optional.empty();
+        }
+    }
 }
