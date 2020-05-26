@@ -11,6 +11,7 @@ public class MetroEstimate {
     public MetroProgress journeySectionprogress;
     public String beginTime;
     public String endTime;
+    public String originalJourneyStartTime;
     public List<MetroStopEstimate> routeRows;
 
     public void setBeginTime(String beginTime) {
@@ -21,5 +22,10 @@ public class MetroEstimate {
     public void setEndTime(String endTime) {
         Optional<String> maybeEndTime = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(endTime);
         this.endTime = maybeEndTime.orElse(null);
+    }
+
+    public void setOriginalJourneyStartTime(String originalJourneyStartTime) {
+        Optional<String> maybeOriginalJourneyStartTime = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(originalJourneyStartTime);
+        this.originalJourneyStartTime = maybeOriginalJourneyStartTime.orElse(null);
     }
 }
