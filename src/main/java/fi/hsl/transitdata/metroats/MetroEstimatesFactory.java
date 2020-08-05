@@ -91,7 +91,7 @@ public class MetroEstimatesFactory {
         }
         metroEstimateBuilder.setTrainType(maybeMetroTrainTypeAts.get());
         // journeySectionprogress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress, String.format("route name %s:", metroEstimate.routeName));
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress, String.format("route name: %s, begin time: %s", metroEstimate.routeName, metroEstimate.beginTime));
         if (!maybeMetroAtsProgress.isPresent()) {
             log.warn("metroEstimate.journeySectionprogress is missing: {}", metroEstimate.journeySectionprogress);
             return Optional.empty();
@@ -235,7 +235,7 @@ public class MetroEstimatesFactory {
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
         // rowProgress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress, String.format("route departure time forecast %s:, station: %s, platform: %s", metroStopEstimate.departureTimeForecast, metroStopEstimate.station, metroStopEstimate.platform));
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress, String.format("route departure time forecast %s:, station: %s", metroStopEstimate.departureTimeForecast, metroStopEstimate.station));
         maybeMetroAtsProgress.ifPresent(metroStopEstimateBuilder::setRowProgress);
 
         return Optional.of(metroStopEstimateBuilder.build());
