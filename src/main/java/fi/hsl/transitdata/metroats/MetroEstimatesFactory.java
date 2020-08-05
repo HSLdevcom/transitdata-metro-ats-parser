@@ -91,7 +91,7 @@ public class MetroEstimatesFactory {
         }
         metroEstimateBuilder.setTrainType(maybeMetroTrainTypeAts.get());
         // journeySectionprogress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress);
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress, String.format("route name: %s, begin time: %s", metroEstimate.routeName, metroEstimate.beginTime));
         if (!maybeMetroAtsProgress.isPresent()) {
             log.warn("metroEstimate.journeySectionprogress is missing: {}", metroEstimate.journeySectionprogress);
             return Optional.empty();
@@ -151,7 +151,7 @@ public class MetroEstimatesFactory {
         // routeRows
         List<MetroAtsProtos.MetroStopEstimate> metroStopEstimates = new ArrayList<>();
         for (MetroStopEstimate metroStopEstimate : metroEstimate.routeRows) {
-            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName);
+            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName, metroEstimate.routeName);
             if (!maybeMetroStopEstimate.isPresent()) {
                     return Optional.empty();
             } else {
@@ -186,7 +186,7 @@ public class MetroEstimatesFactory {
         return maybeMetroTrainTypeAts;
     }
 
-    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction, String beginTime, String startStopShortName) {
+    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction, String beginTime, String startStopShortName, String routeName) {
         MetroAtsProtos.MetroStopEstimate.Builder metroStopEstimateBuilder = MetroAtsProtos.MetroStopEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroStopEstimateBuilder
@@ -235,7 +235,7 @@ public class MetroEstimatesFactory {
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
         // rowProgress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress);
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress, String.format("route name: %s, departure time forecast %s:, station: %s", routeName, metroStopEstimate.departureTimeForecast, metroStopEstimate.station));
         maybeMetroAtsProgress.ifPresent(metroStopEstimateBuilder::setRowProgress);
 
         return Optional.of(metroStopEstimateBuilder.build());
@@ -245,7 +245,7 @@ public class MetroEstimatesFactory {
         return datetime != null && !datetime.equals("null") && !datetime.isEmpty();
     }
 
-    private Optional<MetroAtsProtos.MetroProgress> getMetroAtsProgress(MetroProgress metroProgress) {
+    private Optional<MetroAtsProtos.MetroProgress> getMetroAtsProgress(MetroProgress metroProgress, String details) {
         Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress;
         switch (metroProgress) {
             case SCHEDULED:
@@ -258,6 +258,7 @@ public class MetroEstimatesFactory {
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.COMPLETED);
                 break;
             case CANCELLED:
+                log.info("metroProgress is cancelled: details {} %s", details);
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.CANCELLED);
                 break;
             default:
