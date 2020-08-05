@@ -262,7 +262,7 @@ public class MetroEstimatesFactory {
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.CANCELLED);
                 break;
             default:
-                log.info("Unrecognized metroProgress {}.", metroProgress);
+                log.warn("Unrecognized metroProgress {}.", metroProgress);
                 maybeMetroAtsProgress = Optional.empty();
                 break;
         }
