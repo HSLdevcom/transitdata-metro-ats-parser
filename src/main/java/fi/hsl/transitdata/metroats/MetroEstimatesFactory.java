@@ -151,7 +151,7 @@ public class MetroEstimatesFactory {
         // routeRows
         List<MetroAtsProtos.MetroStopEstimate> metroStopEstimates = new ArrayList<>();
         for (MetroStopEstimate metroStopEstimate : metroEstimate.routeRows) {
-            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName);
+            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName, metroEstimate.routeName);
             if (!maybeMetroStopEstimate.isPresent()) {
                     return Optional.empty();
             } else {
@@ -186,7 +186,7 @@ public class MetroEstimatesFactory {
         return maybeMetroTrainTypeAts;
     }
 
-    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction, String beginTime, String startStopShortName) {
+    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction, String beginTime, String startStopShortName, String routeName) {
         MetroAtsProtos.MetroStopEstimate.Builder metroStopEstimateBuilder = MetroAtsProtos.MetroStopEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroStopEstimateBuilder
@@ -235,7 +235,7 @@ public class MetroEstimatesFactory {
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
         // rowProgress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress, String.format("route departure time forecast %s:, station: %s", metroStopEstimate.departureTimeForecast, metroStopEstimate.station));
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress, String.format("route name: %s, departure time forecast %s:, station: %s", routeName, metroStopEstimate.departureTimeForecast, metroStopEstimate.station));
         maybeMetroAtsProgress.ifPresent(metroStopEstimateBuilder::setRowProgress);
 
         return Optional.of(metroStopEstimateBuilder.build());
