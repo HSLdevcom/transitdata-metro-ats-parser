@@ -91,7 +91,7 @@ public class MetroEstimatesFactory {
         }
         metroEstimateBuilder.setTrainType(maybeMetroTrainTypeAts.get());
         // journeySectionprogress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress);
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress, String.format("route name %s:", metroEstimate.routeName));
         if (!maybeMetroAtsProgress.isPresent()) {
             log.warn("metroEstimate.journeySectionprogress is missing: {}", metroEstimate.journeySectionprogress);
             return Optional.empty();
@@ -235,7 +235,7 @@ public class MetroEstimatesFactory {
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
         // rowProgress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress);
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress, String.format("route departure time forecast %s:, station: %s, platform: %s", metroStopEstimate.departureTimeForecast, metroStopEstimate.station, metroStopEstimate.platform));
         maybeMetroAtsProgress.ifPresent(metroStopEstimateBuilder::setRowProgress);
 
         return Optional.of(metroStopEstimateBuilder.build());
@@ -245,7 +245,7 @@ public class MetroEstimatesFactory {
         return datetime != null && !datetime.equals("null") && !datetime.isEmpty();
     }
 
-    private Optional<MetroAtsProtos.MetroProgress> getMetroAtsProgress(MetroProgress metroProgress) {
+    private Optional<MetroAtsProtos.MetroProgress> getMetroAtsProgress(MetroProgress metroProgress, String details) {
         Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress;
         switch (metroProgress) {
             case SCHEDULED:
@@ -258,7 +258,7 @@ public class MetroEstimatesFactory {
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.COMPLETED);
                 break;
             case CANCELLED:
-                log.info("metroProgress is cancelled");
+                log.info("metroProgress is cancelled: details {} %s", details);
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.CANCELLED);
                 break;
             default:
