@@ -258,10 +258,11 @@ public class MetroEstimatesFactory {
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.COMPLETED);
                 break;
             case CANCELLED:
+                log.info("metroProgress is cancelled");
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.CANCELLED);
                 break;
             default:
-                log.warn("Unrecognized metroProgress {}.", metroProgress);
+                log.info("Unrecognized metroProgress {}.", metroProgress);
                 maybeMetroAtsProgress = Optional.empty();
                 break;
         }
