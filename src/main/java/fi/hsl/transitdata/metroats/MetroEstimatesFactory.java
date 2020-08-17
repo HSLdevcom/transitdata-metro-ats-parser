@@ -67,12 +67,12 @@ public class MetroEstimatesFactory {
         if (maybeStopNumber.isPresent()) {
             String stopNumber = maybeStopNumber.get();
             // Convert UTC datetime to local datetime because the keys in Redis have local datetime
-            final Optional<String> maybeStartDatetime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.beginTime);
+            final Optional<String> maybeStartDatetime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.originalJourneyStartTime); // Use original journey start time to map data to correct departure in case the metro journey is rescheduled
             if (maybeStartDatetime.isPresent()) {
                 final String startDatetime = maybeStartDatetime.get();
                 metroKey = TransitdataProperties.formatMetroId(stopNumber, startDatetime);
             } else {
-                log.warn("Failed to convert UTC datetime {} to local datetime", metroEstimate.beginTime);
+                log.warn("Failed to convert UTC datetime {} to local datetime", metroEstimate.originalJourneyStartTime);
                 return Optional.empty();
             }
         } else {
