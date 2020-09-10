@@ -1,4 +1,4 @@
-package fi.hsl.transitdata.metroats.stopestimates;
+package fi.hsl.transitdata.metroats;
 
 import fi.hsl.common.transitdata.proto.InternalMessages;
 import fi.hsl.common.transitdata.proto.MetroAtsProtos;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class MetroEstimateStopEstimatesFactory implements IStopEstimatesFactory {
+public class MetroEstimateStopEstimatesFactory{
     private static final Logger log = LoggerFactory.getLogger(MetroEstimateStopEstimatesFactory.class);
 
     public Optional<List<InternalMessages.StopEstimate>> toStopEstimates(final Message message) {
@@ -31,6 +31,9 @@ public class MetroEstimateStopEstimatesFactory implements IStopEstimatesFactory 
 
     private List<InternalMessages.StopEstimate> toStopEstimates(byte[] data, final long timestamp) throws Exception {
         MetroAtsProtos.MetroEstimate metroEstimate = MetroAtsProtos.MetroEstimate.parseFrom(data);
+        return toStopEstimates(metroEstimate, timestamp);
+    }
+    public List<InternalMessages.StopEstimate> toStopEstimates(MetroAtsProtos.MetroEstimate metroEstimate, final long timestamp) throws Exception {
 
         //T type trains are not passenger trains -> do not produce estimates
         if (metroEstimate.hasTrainType() && metroEstimate.getTrainType() == MetroAtsProtos.MetroTrainType.T) {

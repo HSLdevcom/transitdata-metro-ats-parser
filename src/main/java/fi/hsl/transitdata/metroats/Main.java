@@ -6,7 +6,6 @@ import fi.hsl.common.pulsar.*;
 import fi.hsl.common.redis.RedisUtils;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.proto.InternalMessages;
-import fi.hsl.transitdata.metroats.stopestimates.MetroEstimateStopEstimatesFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,8 @@ public class Main {
             final int ttl = config.getInt("application.cacheTtlOffsetSeconds");
             final MetroCancellationFactory metroCancellationFactory = new MetroCancellationFactory(redis, ttl);
             final MetroEstimateStopEstimatesFactory metroEstimateStopEstimatesFactory = new MetroEstimateStopEstimatesFactory();
-            MessageHandler handler = new MessageHandler(context, metroCancellationFactory, metroEstimateStopEstimatesFactory);
+            final MetroEstimatesFactory metroEstimatesFactory = new MetroEstimatesFactory(context, addedTripsEnabled);
+            MessageHandler handler = new MessageHandler(context, metroCancellationFactory, metroEstimateStopEstimatesFactory, metroEstimatesFactory);
 
             final int repeatIntervalSeconds = config.getInt("application.repeatIntervalSeconds");
             log.info("Starting message repeating at {} seconds interval", repeatIntervalSeconds);
