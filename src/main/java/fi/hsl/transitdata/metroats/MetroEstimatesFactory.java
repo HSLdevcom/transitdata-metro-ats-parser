@@ -138,7 +138,7 @@ public class MetroEstimatesFactory {
 
             metroEstimateBuilder.setScheduled(false);
         } else {
-            log.debug("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            log.warn("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
             return Optional.empty();
         }
 
