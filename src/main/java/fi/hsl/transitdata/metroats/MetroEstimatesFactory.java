@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
+import java.time.Duration;
 import java.util.*;
 
 public class MetroEstimatesFactory {
@@ -24,6 +25,8 @@ public class MetroEstimatesFactory {
     private static final ObjectMapper mapper = new ObjectMapper();
     private Jedis jedis;
     private boolean addedTripsEnabled;
+
+    private final EarlyDepartureLogger earlyDepartureLogger = new EarlyDepartureLogger(Duration.ofMinutes(5));
 
     public MetroEstimatesFactory(final PulsarApplicationContext context, boolean addedTripsEnabled) {
         this.jedis = context.getJedis();
@@ -42,6 +45,9 @@ public class MetroEstimatesFactory {
 
                 if (maybeMetroEstimate.isPresent()) {
                     final MetroEstimate metroEstimate = maybeMetroEstimate.get();
+
+                    earlyDepartureLogger.checkEarlyDeparture(maybeMetroEstimate.get());
+
                     Optional<MetroAtsProtos.MetroEstimate> maybeMetroAtsEstimate = toMetroEstimate(metroEstimate);
                     return maybeMetroAtsEstimate;
                 }

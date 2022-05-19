@@ -7,9 +7,7 @@ import org.apache.pulsar.shade.com.google.common.collect.ArrayListMultimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -106,6 +104,20 @@ public class MetroUtils {
         }
         catch (Exception e) {
             log.error(String.format("Failed to parse datetime from %s", datetime), e);
+            return Optional.empty();
+        }
+    }
+
+    public static Optional<ZonedDateTime> parseMetroAtsDatetime(final String metroAtsDatetime) {
+        if (metroAtsDatetime == null || metroAtsDatetime.isEmpty() || metroAtsDatetime.equals("null")) {
+            return Optional.empty();
+        }
+
+        try {
+            return Optional.of(ZonedDateTime.parse(metroAtsDatetime, metroAtsDateTimeFormatter));
+        }
+        catch (Exception e) {
+            log.error(String.format("Failed to parse datetime from %s", metroAtsDatetime), e);
             return Optional.empty();
         }
     }
