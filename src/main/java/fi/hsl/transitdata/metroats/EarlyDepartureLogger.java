@@ -39,7 +39,7 @@ public class EarlyDepartureLogger {
             final Optional<ZonedDateTime> scheduled = MetroUtils.parseMetroAtsDatetime(first.departureTimePlanned);
             final Optional<ZonedDateTime> estimated = MetroUtils.parseMetroAtsDatetime(first.departureTimeForecast);
 
-            if (scheduled.isPresent() && estimated.isPresent() && scheduled.get().isBefore(estimated.get())) {
+            if (scheduled.isPresent() && estimated.isPresent() && estimated.get().isBefore(scheduled.get())) {
                 tripsWithEarlyDeparture.add(metroEstimate.routeName+"-"+metroEstimate.beginTime+"-"+metroEstimate.trainType);
             }
         }
