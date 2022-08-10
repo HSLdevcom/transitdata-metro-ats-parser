@@ -23,8 +23,8 @@ public class MetroEstimatesFactory {
     private static final Logger log = LoggerFactory.getLogger(MetroEstimatesFactory.class);
 
     private static final ObjectMapper mapper = new ObjectMapper();
-    private Jedis jedis;
-    private boolean addedTripsEnabled;
+    private final Jedis jedis;
+    private final boolean addedTripsEnabled;
 
     private final EarlyDepartureLogger earlyDepartureLogger = new EarlyDepartureLogger(Duration.ofMinutes(5));
 
@@ -48,8 +48,7 @@ public class MetroEstimatesFactory {
 
                     earlyDepartureLogger.checkEarlyDeparture(maybeMetroEstimate.get());
 
-                    Optional<MetroAtsProtos.MetroEstimate> maybeMetroAtsEstimate = toMetroEstimate(metroEstimate);
-                    return maybeMetroAtsEstimate;
+                    return toMetroEstimate(metroEstimate);
                 }
             }
         } catch (Exception e) {
@@ -59,32 +58,44 @@ public class MetroEstimatesFactory {
     }
 
     private Optional<MetroAtsProtos.MetroEstimate> toMetroEstimate(final MetroEstimate metroEstimate) throws Exception {
-        final String[] stopShortNames = metroEstimate.routeName.split("-");
-        if (stopShortNames.length != 2) {
-            log.warn("Failed to parse metro estimate route name {}", metroEstimate.routeName);
+        if (metroEstimate.routeRows.isEmpty()) {
+            log.warn("No route rows for metro estimate (route name: {}, start time: {}), cannot process", metroEstimate.routeName, metroEstimate.beginTime);
             return Optional.empty();
         }
-        final String startStopShortName = stopShortNames[0];
-        final String endStopShortName = stopShortNames[1];
+
+        //Find first route row with stop number (i.e. first station which can be used by passengers). Route rows can contain stations which passengers can't use due to Länsimetro 2 test traffic
+        final Optional<MetroStopEstimate> firstRouteRowWithStopNumber = metroEstimate.routeRows.stream().filter(routeRow -> !MetroUtils.getStopNumbers(routeRow.station).isEmpty()).findFirst();
+        if (!firstRouteRowWithStopNumber.isPresent()) {
+            log.warn("No first route row with stop numbers found for metro estimate (route name: {}, start time: {})", metroEstimate.routeName, metroEstimate.beginTime);
+            return Optional.empty();
+        }
+
+        final Optional<MetroStopEstimate> lastRouteRowWithStopNumber = metroEstimate.routeRows.stream().filter(routeRow -> !MetroUtils.getStopNumbers(routeRow.station).isEmpty()).reduce((a, b) -> b);
+
+        final String startStopShortName = firstRouteRowWithStopNumber.get().station;
+        final String endStopShortName = lastRouteRowWithStopNumber.get().station;
 
         // Create a metroKey to be used for Redis Query
-        String metroKey;
-        Optional<String> maybeStopNumber = MetroUtils.getStopNumber(startStopShortName, startStopShortName, endStopShortName);
+        final String metroKey;
+        final Optional<String> maybeStopNumber = MetroUtils.getStopNumber(startStopShortName, startStopShortName, endStopShortName);
         if (maybeStopNumber.isPresent()) {
+            String beginTime = firstRouteRowWithStopNumber.get().departureTimePlanned;
+
             String stopNumber = maybeStopNumber.get();
             // Convert UTC datetime to local datetime because the keys in Redis have local datetime
-            final Optional<String> maybeStartDatetime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.beginTime);
+            final Optional<String> maybeStartDatetime = MetroUtils.convertUtcDatetimeToPubtransDatetime(beginTime);
             if (maybeStartDatetime.isPresent()) {
                 final String startDatetime = maybeStartDatetime.get();
                 metroKey = TransitdataProperties.formatMetroId(stopNumber, startDatetime);
             } else {
-                log.warn("Failed to convert UTC datetime {} to local datetime", metroEstimate.beginTime);
+                log.warn("Failed to convert UTC datetime {} to local datetime", beginTime);
                 return Optional.empty();
             }
         } else {
             log.warn("Failed to get stop number for stop shortNames: startStopShortName: {}, endStopShortName: {}", startStopShortName, endStopShortName);
             return Optional.empty();
         }
+
         MetroAtsProtos.MetroEstimate.Builder metroEstimateBuilder = MetroAtsProtos.MetroEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroEstimateBuilder
@@ -108,7 +119,7 @@ public class MetroEstimatesFactory {
         metroEstimateBuilder.setStartStopShortName(startStopShortName);
 
         Optional<Map<String, String>> metroJourneyData = getMetroJourneyData(metroKey);
-        if(metroJourneyData.isPresent()) {
+        if (metroJourneyData.isPresent()) {
             // Set fields from Redis into metroEstimateBuilder
             Map<String, String> map = metroJourneyData.get();
 
@@ -126,10 +137,10 @@ public class MetroEstimatesFactory {
                 metroEstimateBuilder.setStartDatetime(map.get(TransitdataProperties.KEY_START_DATETIME));
             if (map.containsKey(TransitdataProperties.KEY_DIRECTION))
                 metroEstimateBuilder.setDirection(map.get(TransitdataProperties.KEY_DIRECTION));
-        } else if (addedTripsEnabled){
+        } else if (addedTripsEnabled) {
             log.debug("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
             MetroUtils.getRouteName(startStopShortName, endStopShortName).ifPresent(metroEstimateBuilder::setRouteName);
-            MetroUtils.getJoreDirection(startStopShortName, endStopShortName).map(String::valueOf).ifPresent(metroEstimateBuilder::setDirection);
+            MetroUtils.getJoreDirection(startStopShortName, endStopShortName).ifPresent(dir -> metroEstimateBuilder.setDirection(String.valueOf(dir)));
             maybeStopNumber.ifPresent(metroEstimateBuilder::setStartStopNumber);
 
             String startDateTime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.beginTime).get();
@@ -149,7 +160,7 @@ public class MetroEstimatesFactory {
         }
 
         Integer direction = metroJourneyData.map(map -> Integer.parseInt(map.get(TransitdataProperties.KEY_DIRECTION))).orElse(MetroUtils.getJoreDirection(startStopShortName, endStopShortName).orElse(null));
-        if(direction == null) {
+        if (direction == null) {
             log.warn("Couldn't read direction from metroJourneyData: {}.", direction);
             return Optional.empty();
         }
@@ -159,7 +170,7 @@ public class MetroEstimatesFactory {
         for (MetroStopEstimate metroStopEstimate : metroEstimate.routeRows) {
             Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName, metroEstimate.routeName);
             if (!maybeMetroStopEstimate.isPresent()) {
-                    return Optional.empty();
+                log.warn("No estimate created for station {} of metro trip {} - {}", metroStopEstimate.station, metroEstimate.routeName, metroEstimate.beginTime);
             } else {
                 metroStopEstimates.add(maybeMetroStopEstimate.get());
             }
@@ -196,8 +207,8 @@ public class MetroEstimatesFactory {
         MetroAtsProtos.MetroStopEstimate.Builder metroStopEstimateBuilder = MetroAtsProtos.MetroStopEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroStopEstimateBuilder
-        metroStopEstimateBuilder.setStation((metroStopEstimate.station));
-        metroStopEstimateBuilder.setPlatform((metroStopEstimate.platform));
+        metroStopEstimateBuilder.setStation(metroStopEstimate.station);
+        metroStopEstimateBuilder.setPlatform(metroStopEstimate.platform);
 
         if (validateDatetime(metroStopEstimate.arrivalTimePlanned)) {
             metroStopEstimateBuilder.setArrivalTimePlanned(metroStopEstimate.arrivalTimePlanned);

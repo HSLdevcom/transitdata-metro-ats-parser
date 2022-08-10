@@ -10,10 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class MetroUtils {
     private static final Logger log = LoggerFactory.getLogger(MetroUtils.class);
@@ -23,7 +20,6 @@ public class MetroUtils {
     private static final List<String> shortNames = new ArrayList<>();
     private static final DateTimeFormatter dateTimeFormatter;
     private static final DateTimeFormatter metroAtsDateTimeFormatter;
-    private static final DateTimeFormatter pubtransDateTimeFormatter;
     private static final DateTimeFormatter utcDateTimeFormatter;
     private static final ZoneId metroAtsZoneId;
     private static final ZoneId pubtransZoneId;
@@ -34,23 +30,29 @@ public class MetroUtils {
         stopsConfig.getObjectList("metroStops")
                 .forEach(stopConfigObject -> {
                     final Config stopConfig = stopConfigObject.toConfig();
+
                     final String shortName = stopConfig.getString("shortName");
-                    final List<String> stopNumbers = stopConfig.getStringList("stopNumbers");
+                    final List<String> stopNumbers = stopConfig.hasPath("stopNumbers") ? stopConfig.getStringList("stopNumbers") : Collections.emptyList();
+
                     shortNames.add(shortName);
                     stopNumbers.forEach(stopNumber -> {
                         shortNameByStopNumber.put(stopNumber, shortName);
                         stopNumbersByShortName.put(shortName, stopNumber);
                     });
                 });
+
         final Config config = ConfigParser.createConfig();
+
         final String metroAtsTimeZone = config.getString("application.metroAtstimezone");
         final String pubtransTimeZone = config.getString("application.pubtransTimezone");
+
         metroAtsZoneId = ZoneId.of(metroAtsTimeZone);
         pubtransZoneId = ZoneId.of(pubtransTimeZone);
         utcZoneId = ZoneId.of("UTC");
+
         dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+
         metroAtsDateTimeFormatter = dateTimeFormatter.withZone(metroAtsZoneId);
-        pubtransDateTimeFormatter = dateTimeFormatter.withZone(pubtransZoneId);
         utcDateTimeFormatter = dateTimeFormatter.withZone(utcZoneId);
     }
 
@@ -61,12 +63,12 @@ public class MetroUtils {
     }
 
     public static List<String> getStopNumbers(final String shortName) {
-        return stopNumbersByShortName.get(shortName);
+        return stopNumbersByShortName.containsKey(shortName) ? stopNumbersByShortName.get(shortName) : Collections.emptyList();
     }
 
-    public static Optional<Integer> getJoreDirection(final String startStop, final String endStop) {
-        final int startStopIndex = shortNames.indexOf(startStop);
-        final int endStopIndex = shortNames.indexOf(endStop);
+    public static Optional<Integer> getJoreDirection(final String startStation, final String endStation) {
+        final int startStopIndex = shortNames.indexOf(startStation);
+        final int endStopIndex = shortNames.indexOf(endStation);
         if (startStopIndex == -1 || endStopIndex == -1 || startStopIndex == endStopIndex) {
             return Optional.empty();
         }
