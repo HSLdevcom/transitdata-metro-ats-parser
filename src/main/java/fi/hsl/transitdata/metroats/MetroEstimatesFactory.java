@@ -15,14 +15,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 
-import java.time.Duration;
+import java.time.*;
 import java.util.*;
+import java.util.function.Predicate;
 
 public class MetroEstimatesFactory {
-
     private static final Logger log = LoggerFactory.getLogger(MetroEstimatesFactory.class);
 
     private static final ObjectMapper mapper = new ObjectMapper();
+
+    private static final Set<String> LANSIMETRO2_STATIONS = Set.of("KIL", "ESL", "SOU", "KAI", "FIN");
+    private static final ZonedDateTime LANSIMETRO2_ENABLED_FROM = ZonedDateTime.of(
+            LocalDate.of(2022, 12, 3),
+            LocalTime.of(4, 0),
+            ZoneId.of("Europe/Helsinki")
+    );
+
     private final Jedis jedis;
     private final boolean addedTripsEnabled;
 
@@ -57,20 +65,41 @@ public class MetroEstimatesFactory {
         return Optional.empty();
     }
 
+    //TODO: remove this after Länsimetro 2 is opened
+    private static boolean shouldIgnoreStation(final String stationCode, final ZonedDateTime metroStartTime) {
+        //Ignore Länsimetro 2 stations before Länsimetro 2 is opened
+        return LANSIMETRO2_STATIONS.contains(stationCode) && metroStartTime.compareTo(LANSIMETRO2_ENABLED_FROM) < 0;
+    }
+
     private Optional<MetroAtsProtos.MetroEstimate> toMetroEstimate(final MetroEstimate metroEstimate) throws Exception {
         if (metroEstimate.routeRows.isEmpty()) {
             log.warn("No route rows for metro estimate (route name: {}, start time: {}), cannot process", metroEstimate.routeName, metroEstimate.beginTime);
             return Optional.empty();
         }
 
+        final Optional<ZonedDateTime> metroStartTime = MetroUtils.parseMetroAtsDatetime(metroEstimate.beginTime);
+        if (metroStartTime.isEmpty()) {
+            log.warn("Failed to parse metro begin time: {}", metroEstimate.beginTime);
+            return Optional.empty();
+        }
+
+        final Predicate<MetroStopEstimate> metroStopEstimateFilter = metroStopEstimate -> {
+            return !MetroUtils.getStopNumbers(metroStopEstimate.station).isEmpty()
+                    && !shouldIgnoreStation(metroStopEstimate.station, metroStartTime.get());
+        };
+
         //Find first route row with stop number (i.e. first station which can be used by passengers). Route rows can contain stations which passengers can't use due to Länsimetro 2 test traffic
-        final Optional<MetroStopEstimate> firstRouteRowWithStopNumber = metroEstimate.routeRows.stream().filter(routeRow -> !MetroUtils.getStopNumbers(routeRow.station).isEmpty()).findFirst();
-        if (!firstRouteRowWithStopNumber.isPresent()) {
+        final Optional<MetroStopEstimate> firstRouteRowWithStopNumber = metroEstimate.routeRows.stream()
+                .filter(metroStopEstimateFilter)
+                .findFirst();
+        if (firstRouteRowWithStopNumber.isEmpty()) {
             log.warn("No first route row with stop numbers found for metro estimate (route name: {}, start time: {})", metroEstimate.routeName, metroEstimate.beginTime);
             return Optional.empty();
         }
 
-        final Optional<MetroStopEstimate> lastRouteRowWithStopNumber = metroEstimate.routeRows.stream().filter(routeRow -> !MetroUtils.getStopNumbers(routeRow.station).isEmpty()).reduce((a, b) -> b);
+        final Optional<MetroStopEstimate> lastRouteRowWithStopNumber = metroEstimate.routeRows.stream()
+                .filter(metroStopEstimateFilter)
+                .reduce((a, b) -> b);
 
         final String startStopShortName = firstRouteRowWithStopNumber.get().station;
         final String endStopShortName = lastRouteRowWithStopNumber.get().station;
@@ -169,7 +198,7 @@ public class MetroEstimatesFactory {
         List<MetroAtsProtos.MetroStopEstimate> metroStopEstimates = new ArrayList<>();
         for (MetroStopEstimate metroStopEstimate : metroEstimate.routeRows) {
             Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName, metroEstimate.routeName);
-            if (!maybeMetroStopEstimate.isPresent()) {
+            if (maybeMetroStopEstimate.isEmpty()) {
                 log.warn("No estimate created for station {} of metro trip {} - {}", metroStopEstimate.station, metroEstimate.routeName, metroEstimate.beginTime);
             } else {
                 metroStopEstimates.add(maybeMetroStopEstimate.get());
@@ -204,6 +233,15 @@ public class MetroEstimatesFactory {
     }
 
     private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction, String beginTime, String startStopShortName, String routeName) {
+        final Optional<ZonedDateTime> metroStartTime = MetroUtils.parseMetroAtsDatetime(beginTime);
+        if (metroStartTime.isEmpty()) {
+            return Optional.empty();
+        }
+
+        if (shouldIgnoreStation(metroStopEstimate.station, metroStartTime.get())) {
+            return Optional.empty();
+        }
+
         MetroAtsProtos.MetroStopEstimate.Builder metroStopEstimateBuilder = MetroAtsProtos.MetroStopEstimate.newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroStopEstimateBuilder
