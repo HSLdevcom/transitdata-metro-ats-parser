@@ -167,7 +167,7 @@ public class MetroEstimatesFactory {
             if (map.containsKey(TransitdataProperties.KEY_DIRECTION))
                 metroEstimateBuilder.setDirection(map.get(TransitdataProperties.KEY_DIRECTION));
         } else if (addedTripsEnabled) {
-            log.debug("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            log.info("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
             MetroUtils.getRouteName(startStopShortName, endStopShortName).ifPresent(metroEstimateBuilder::setRouteName);
             MetroUtils.getJoreDirection(startStopShortName, endStopShortName).ifPresent(dir -> metroEstimateBuilder.setDirection(String.valueOf(dir)));
             maybeStopNumber.ifPresent(metroEstimateBuilder::setStartStopNumber);
@@ -239,6 +239,7 @@ public class MetroEstimatesFactory {
         }
 
         if (shouldIgnoreStation(metroStopEstimate.station, metroStartTime.get())) {
+            log.info("Ignoring estimate from station {}, metro start time: {}, start stop: {}, route: {}", metroStopEstimate.station, beginTime, startStopShortName, routeName);
             return Optional.empty();
         }
 
