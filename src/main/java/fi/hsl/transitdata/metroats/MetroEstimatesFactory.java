@@ -331,6 +331,7 @@ public class MetroEstimatesFactory {
             try {
                 Map<String, String> redisMap = jedis.hgetAll(metroKey);
                 if (redisMap.isEmpty()) {
+                    log.warn("FOR SOME REASON couldn't find metroJourneyData from redis. Metro key: {}", metroKey);
                     return Optional.empty();
                 }
                 return Optional.ofNullable(redisMap);
