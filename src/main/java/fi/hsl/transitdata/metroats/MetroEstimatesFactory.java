@@ -329,8 +329,18 @@ public class MetroEstimatesFactory {
     private Optional<Map<String, String>> getMetroJourneyData(final String metroKey) {
         synchronized (jedis) {
             try {
-                Map<String, String> redisMap = jedis.hgetAll(metroKey);
-                if (redisMap.isEmpty()) {
+                Map<String, String> redisMap;
+                if (jedis.exists(metroKey)) {
+                    String keyType = jedis.type(metroKey);
+                    redisMap = jedis.hgetAll(metroKey);
+                    if (redisMap.isEmpty()) {
+                        log.info("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                        return Optional.empty();
+                    } else {
+                        log.info("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                    }
+                } else {
+                    log.error("Couldn't find key from redis. Metro key: {}", metroKey);
                     return Optional.empty();
                 }
                 return Optional.ofNullable(redisMap);
