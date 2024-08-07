@@ -146,8 +146,7 @@ public class MetroEstimatesFactory {
         metroEstimateBuilder.setBeginTime(metroEstimate.beginTime);
         metroEstimateBuilder.setEndTime(metroEstimate.endTime);
         metroEstimateBuilder.setStartStopShortName(startStopShortName);
-        
-        log.info("Getting MetroJourneyData for '" + metroKey + "'");
+
         Optional<Map<String, String>> metroJourneyData = getMetroJourneyData(metroKey);
         if (metroJourneyData.isPresent()) {
             // Set fields from Redis into metroEstimateBuilder
@@ -341,7 +340,7 @@ public class MetroEstimatesFactory {
                         log.warn("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
                     }
                 } else {
-                    log.error("Couldn't find key from redis. Metro key: {}", metroKey);
+                    log.error("Couldn't find key from jedis. Metro key: {}. Db size: {}", metroKey, jedis.dbSize());
                     return Optional.empty();
                 }
                 if (redisMap == null) {
