@@ -343,6 +343,11 @@ public class MetroEstimatesFactory {
                     log.error("Couldn't find key from redis. Metro key: {}", metroKey);
                     return Optional.empty();
                 }
+                if (redisMap == null) {
+                    log.warn("Returning null redisMap");
+                } else {
+                    log.warn("Returning redisMap, size=" + redisMap.size());
+                }
                 return Optional.ofNullable(redisMap);
             } catch (Exception e) {
                 log.error("Couldn't read metroJourneyData from redis. Metro key: {}", metroKey, e);
