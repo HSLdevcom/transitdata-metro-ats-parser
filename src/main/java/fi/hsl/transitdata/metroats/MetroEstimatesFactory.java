@@ -146,7 +146,8 @@ public class MetroEstimatesFactory {
         metroEstimateBuilder.setBeginTime(metroEstimate.beginTime);
         metroEstimateBuilder.setEndTime(metroEstimate.endTime);
         metroEstimateBuilder.setStartStopShortName(startStopShortName);
-
+        
+        log.info("Getting MetroJourneyData for '" + metroKey + "'");
         Optional<Map<String, String>> metroJourneyData = getMetroJourneyData(metroKey);
         if (metroJourneyData.isPresent()) {
             // Set fields from Redis into metroEstimateBuilder
@@ -184,7 +185,7 @@ public class MetroEstimatesFactory {
 
             metroEstimateBuilder.setScheduled(false);
         } else {
-            log.warn("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            log.warn("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}.", metroKey, metroJourneyData);
             return Optional.empty();
         }
 
@@ -346,7 +347,7 @@ public class MetroEstimatesFactory {
                 if (redisMap == null) {
                     log.warn("Returning null redisMap");
                 } else {
-                    log.warn("Returning redisMap, size=" + redisMap.size());
+                    log.info("Returning redisMap, size=" + redisMap.size());
                 }
                 return Optional.ofNullable(redisMap);
             } catch (Exception e) {
