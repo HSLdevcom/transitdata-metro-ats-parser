@@ -334,10 +334,10 @@ public class MetroEstimatesFactory {
                     String keyType = jedis.type(metroKey);
                     redisMap = jedis.hgetAll(metroKey);
                     if (redisMap.isEmpty()) {
-                        log.info("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                        log.warn("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
                         return Optional.empty();
                     } else {
-                        log.info("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                        log.warn("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
                     }
                 } else {
                     log.error("Couldn't find key from redis. Metro key: {}", metroKey);
