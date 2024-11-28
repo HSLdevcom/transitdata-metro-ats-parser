@@ -1,10 +1,8 @@
-[![Build Status](https://travis-ci.org/HSLdevcom/transitdata-metro-ats-parser.svg?branch=master)](https://travis-ci.org/HSLdevcom/transitdata-metro-ats-parser)
-
-# Transitdata-metro-ats-parser
+# Transitdata-metro-ats-parser [![Test and create Docker image](https://github.com/HSLdevcom/transitdata-metro-ats-parser/actions/workflows/test-and-build.yml/badge.svg)](https://github.com/HSLdevcom/transitdata-metro-ats-parser/actions/workflows/test-and-build.yml)
 
 ## Description
 
-Application for parsing metro messages from MQTT raw messages. Messages are read
+Application for parsing metro ATS messages from raw JSON messages received from the metro ATS API over MQTT. The data from the raw JSON is combined with static data in Redis (see [transitdata-cache-bootstrapper](https://github.com/HSLdevcom/transitdata-cache-bootstrapper)) to add route IDs and other metadata to the message. Messages are read
 from one Pulsar topic and the output is written to another Pulsar topic.
 
 ## Building
@@ -15,8 +13,8 @@ This project depends on [transitdata-common](https://github.com/HSLdevcom/transi
 
 ### Locally
 
-- ```mvn compile```  
-- ```mvn package```  
+- `mvn compile`
+- `mvn package`
 
 ### Docker image
 
@@ -24,12 +22,13 @@ This project depends on [transitdata-common](https://github.com/HSLdevcom/transi
 
 ## Running
 
-Requirements:
-- Local Pulsar Cluster
-  - By default uses localhost, override host in PULSAR_HOST if needed.
-    - Tip: f.ex if running inside Docker in OSX set `PULSAR_HOST=host.docker.internal` to connect to the parent machine
-  - You can use [this script](https://github.com/HSLdevcom/transitdata/blob/master/bin/pulsar/pulsar-up.sh) to launch it as Docker container
+### Dependencies
 
-Launch Docker container with
+* Pulsar
+* Redis
 
-```docker-compose -f compose-config-file.yml up <service-name>```   
+### Environment variables
+
+* `METRO_ATS_TIMEZONE`: timezone used in metro ATS API messages
+* `PUBTRANS_TIMEZONE`: timezone used in PubTrans
+* `ADDED_TRIPS_ENABLED`: whether to create messages for those metros that are not found from the static schedule (PubTrans)

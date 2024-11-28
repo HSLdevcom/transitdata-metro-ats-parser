@@ -184,7 +184,7 @@ public class MetroEstimatesFactory {
 
             metroEstimateBuilder.setScheduled(false);
         } else {
-            log.warn("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            log.warn("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}.", metroKey, metroJourneyData);
             return Optional.empty();
         }
 
@@ -329,9 +329,24 @@ public class MetroEstimatesFactory {
     private Optional<Map<String, String>> getMetroJourneyData(final String metroKey) {
         synchronized (jedis) {
             try {
-                Map<String, String> redisMap = jedis.hgetAll(metroKey);
-                if (redisMap.isEmpty()) {
+                Map<String, String> redisMap;
+                if (jedis.exists(metroKey)) {
+                    String keyType = jedis.type(metroKey);
+                    redisMap = jedis.hgetAll(metroKey);
+                    if (redisMap.isEmpty()) {
+                        log.warn("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                        return Optional.empty();
+                    } else {
+                        log.warn("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                    }
+                } else {
+                    log.error("Couldn't find key from jedis. Metro key: {}. Db size: {}", metroKey, jedis.dbSize());
                     return Optional.empty();
+                }
+                if (redisMap == null) {
+                    log.warn("Returning null redisMap");
+                } else {
+                    log.info("Returning redisMap, size=" + redisMap.size());
                 }
                 return Optional.ofNullable(redisMap);
             } catch (Exception e) {
