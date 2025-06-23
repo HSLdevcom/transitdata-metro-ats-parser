@@ -66,6 +66,7 @@ public class MetroEstimatesFactory {
     }
 
     //TODO: remove this after Länsimetro 2 is opened
+    @Deprecated
     private static boolean shouldIgnoreStation(final String stationCode, final ZonedDateTime metroStartTime) {
         //Ignore Länsimetro 2 stations before Länsimetro 2 is opened
         return LANSIMETRO2_STATIONS.contains(stationCode) && metroStartTime.compareTo(LANSIMETRO2_ENABLED_FROM) < 0;
