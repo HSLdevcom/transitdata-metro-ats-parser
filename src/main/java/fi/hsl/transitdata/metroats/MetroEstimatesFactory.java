@@ -167,7 +167,7 @@ public class MetroEstimatesFactory {
             if (map.containsKey(TransitdataProperties.KEY_DIRECTION))
                 metroEstimateBuilder.setDirection(map.get(TransitdataProperties.KEY_DIRECTION));
         } else if (addedTripsEnabled) {
-            log.info("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            log.debug("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
             MetroUtils.getRouteName(startStopShortName, endStopShortName).ifPresent(metroEstimateBuilder::setRouteName);
             MetroUtils.getJoreDirection(startStopShortName, endStopShortName).ifPresent(dir -> metroEstimateBuilder.setDirection(String.valueOf(dir)));
             maybeStopNumber.ifPresent(metroEstimateBuilder::setStartStopNumber);
@@ -239,7 +239,7 @@ public class MetroEstimatesFactory {
         }
 
         if (shouldIgnoreStation(metroStopEstimate.station, metroStartTime.get())) {
-            log.info("Ignoring estimate from station {}, metro start time: {}, start stop: {}, route: {}", metroStopEstimate.station, beginTime, startStopShortName, routeName);
+            log.debug("Ignoring estimate from station {}, metro start time: {}, start stop: {}, route: {}", metroStopEstimate.station, beginTime, startStopShortName, routeName);
             return Optional.empty();
         }
 
@@ -314,7 +314,7 @@ public class MetroEstimatesFactory {
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.COMPLETED);
                 break;
             case CANCELLED:
-                log.info("metroProgress is cancelled: details {} %s", details);
+                log.debug("metroProgress is cancelled: details {} %s", details);
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.CANCELLED);
                 break;
             default:
@@ -334,17 +334,17 @@ public class MetroEstimatesFactory {
                     String keyType = jedis.type(metroKey);
                     redisMap = jedis.hgetAll(metroKey);
                     if (redisMap.isEmpty()) {
-                        log.warn("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                        log.debug("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
                         return Optional.empty();
                     } else {
-                        log.warn("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
+                        log.debug("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
                     }
                 } else {
                     log.error("Couldn't find key from jedis. Metro key: {}. Db size: {}", metroKey, jedis.dbSize());
                     return Optional.empty();
                 }
                 if (redisMap != null && !redisMap.isEmpty()) {
-                    log.info("Returning redisMap, size={}", redisMap.size());
+                    log.debug("Returning redisMap, size={}", redisMap.size());
                 }
                 return Optional.ofNullable(redisMap);
             } catch (Exception e) {
