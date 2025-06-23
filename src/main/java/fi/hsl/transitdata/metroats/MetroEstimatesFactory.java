@@ -343,10 +343,8 @@ public class MetroEstimatesFactory {
                     log.error("Couldn't find key from jedis. Metro key: {}. Db size: {}", metroKey, jedis.dbSize());
                     return Optional.empty();
                 }
-                if (redisMap == null) {
-                    log.warn("Returning null redisMap");
-                } else {
-                    log.info("Returning redisMap, size=" + redisMap.size());
+                if (redisMap != null && !redisMap.isEmpty()) {
+                    log.info("Returning redisMap, size={}", redisMap.size());
                 }
                 return Optional.ofNullable(redisMap);
             } catch (Exception e) {
@@ -361,7 +359,7 @@ public class MetroEstimatesFactory {
             MetroEstimate metroEstimate = mapper.readValue(payload, MetroEstimate.class);
             return Optional.of(metroEstimate);
         } catch (Exception e) {
-            log.warn(String.format("Failed to parse payload %s.", new String(payload)), e);
+            log.warn("Failed to parse payload {}.", new String(payload), e);
         }
         return Optional.empty();
     }
