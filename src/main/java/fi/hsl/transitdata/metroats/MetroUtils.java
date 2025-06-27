@@ -105,7 +105,7 @@ public class MetroUtils {
             return Optional.of(zonedDateTime.format(dateTimeFormatter));
         }
         catch (Exception e) {
-            log.error(String.format("Failed to parse datetime from %s", datetime), e);
+            log.error("Failed to parse datetime from {}", datetime, e);
             return Optional.empty();
         }
     }
@@ -119,7 +119,7 @@ public class MetroUtils {
             return Optional.of(ZonedDateTime.parse(metroAtsDatetime, metroAtsDateTimeFormatter));
         }
         catch (Exception e) {
-            log.error(String.format("Failed to parse datetime from %s", metroAtsDatetime), e);
+            log.error("Failed to parse datetime from {}", metroAtsDatetime, e);
             return Optional.empty();
         }
     }
