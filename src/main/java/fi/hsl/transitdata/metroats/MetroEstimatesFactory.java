@@ -13,7 +13,6 @@ import fi.hsl.transitdata.metroats.models.MetroTrainType;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
 import java.time.*;
 import java.util.*;
@@ -31,13 +30,13 @@ public class MetroEstimatesFactory {
             ZoneId.of("Europe/Helsinki")
     );
 
-    private final Jedis jedis;
+    private final JedisExecutor jedisExecutor;
     private final boolean addedTripsEnabled;
 
     private final EarlyDepartureLogger earlyDepartureLogger = new EarlyDepartureLogger(Duration.ofMinutes(5));
 
-    public MetroEstimatesFactory(final PulsarApplicationContext context, boolean addedTripsEnabled) {
-        this.jedis = context.getJedis();
+    public MetroEstimatesFactory(final PulsarApplicationContext context, boolean addedTripsEnabled, JedisExecutor jedisExecutor) {
+        this.jedisExecutor = jedisExecutor;
         this.addedTripsEnabled = addedTripsEnabled;
         log.info("addedTripsEnabled set to: {}", this.addedTripsEnabled);
     }
@@ -327,7 +326,7 @@ public class MetroEstimatesFactory {
 
 
     private Optional<Map<String, String>> getMetroJourneyData(final String metroKey) {
-        synchronized (jedis) {
+        return jedisExecutor.execute(jedis -> {
             try {
                 Map<String, String> redisMap;
                 if (jedis.exists(metroKey)) {
@@ -353,7 +352,7 @@ public class MetroEstimatesFactory {
                 log.error("Couldn't read metroJourneyData from redis. Metro key: {}", metroKey, e);
                 return Optional.empty();
             }
-        }
+        });
     }
 
     public static Optional<MetroEstimate> parsePayload(final byte[] payload) {
