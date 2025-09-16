@@ -28,7 +28,8 @@ public class EarlyDepartureLogger {
 
     public void checkEarlyDeparture(MetroEstimate metroEstimate) {
         if (Duration.ofNanos(System.nanoTime() - startTime).compareTo(interval) >= 0) {
-            logger.info("{} trips within last {} minutes where estimated departure was before scheduled departure", tripsWithEarlyDeparture.size(), interval.toMinutes());
+            logger.info("{} trips within last {} minutes where estimated departure was before scheduled departure",
+                    tripsWithEarlyDeparture.size(), interval.toMinutes());
 
             startTime = System.nanoTime();
             tripsWithEarlyDeparture.clear();
@@ -40,7 +41,8 @@ public class EarlyDepartureLogger {
             final Optional<ZonedDateTime> estimated = MetroUtils.parseMetroAtsDatetime(first.departureTimeForecast);
 
             if (scheduled.isPresent() && estimated.isPresent() && estimated.get().isBefore(scheduled.get())) {
-                tripsWithEarlyDeparture.add(metroEstimate.routeName+"-"+metroEstimate.beginTime+"-"+metroEstimate.trainType);
+                tripsWithEarlyDeparture
+                        .add(metroEstimate.routeName + "-" + metroEstimate.beginTime + "-" + metroEstimate.trainType);
             }
         }
     }
