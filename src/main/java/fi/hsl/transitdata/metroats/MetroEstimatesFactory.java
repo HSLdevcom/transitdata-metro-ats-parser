@@ -3,6 +3,7 @@ package fi.hsl.transitdata.metroats;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.hsl.common.mqtt.proto.Mqtt;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
+import fi.hsl.common.redis.RedisStore;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataSchema;
 import fi.hsl.common.transitdata.proto.MetroAtsProtos;
@@ -13,10 +14,18 @@ import fi.hsl.transitdata.metroats.models.MetroTrainType;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
-import java.time.*;
-import java.util.*;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class MetroEstimatesFactory {
@@ -28,13 +37,13 @@ public class MetroEstimatesFactory {
     private static final ZonedDateTime LANSIMETRO2_ENABLED_FROM = ZonedDateTime.of(LocalDate.of(2022, 12, 3),
             LocalTime.of(4, 0), ZoneId.of("Europe/Helsinki"));
 
-    private final Jedis jedis;
+    private final RedisStore redisStore;
     private final boolean addedTripsEnabled;
 
     private final EarlyDepartureLogger earlyDepartureLogger = new EarlyDepartureLogger(Duration.ofMinutes(5));
 
     public MetroEstimatesFactory(final PulsarApplicationContext context, boolean addedTripsEnabled) {
-        this.jedis = context.getJedis();
+        this.redisStore = context.getRedisStore();
         this.addedTripsEnabled = addedTripsEnabled;
         log.info("addedTripsEnabled set to: {}", this.addedTripsEnabled);
     }
@@ -345,31 +354,17 @@ public class MetroEstimatesFactory {
     }
 
     private Optional<Map<String, String>> getMetroJourneyData(final String metroKey) {
-        synchronized (jedis) {
-            try {
-                Map<String, String> redisMap;
-                if (jedis.exists(metroKey)) {
-                    String keyType = jedis.type(metroKey);
-                    redisMap = jedis.hgetAll(metroKey);
-                    if (redisMap.isEmpty()) {
-                        log.debug("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey,
-                                keyType);
-                        return Optional.empty();
-                    } else {
-                        log.debug("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
-                    }
-                } else {
-                    log.error("Couldn't find key from jedis. Metro key: {}. Db size: {}", metroKey, jedis.dbSize());
-                    return Optional.empty();
-                }
-                if (redisMap != null && !redisMap.isEmpty()) {
-                    log.debug("Returning redisMap, size={}", redisMap.size());
-                }
-                return Optional.ofNullable(redisMap);
-            } catch (Exception e) {
-                log.error("Couldn't read metroJourneyData from redis. Metro key: {}", metroKey, e);
-                return Optional.empty();
+        try {
+            var journeyData = redisStore.getValues(metroKey);
+            if (journeyData.isEmpty()) {
+                log.debug("Couldn't find any data for metro key: {}", metroKey);
             }
+
+            return journeyData;
+
+        } catch (Exception e) {
+            log.error("Couldn't read metroJourneyData from redis. Metro key: {}", metroKey, e);
+            return Optional.empty();
         }
     }
 
