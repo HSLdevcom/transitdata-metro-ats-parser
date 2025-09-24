@@ -27,19 +27,20 @@ public class MetroUtils {
 
     static {
         final Config stopsConfig = ConfigParser.createConfig("metro_stops.conf");
-        stopsConfig.getObjectList("metroStops")
-                .forEach(stopConfigObject -> {
-                    final Config stopConfig = stopConfigObject.toConfig();
+        stopsConfig.getObjectList("metroStops").forEach(stopConfigObject -> {
+            final Config stopConfig = stopConfigObject.toConfig();
 
-                    final String shortName = stopConfig.getString("shortName");
-                    final List<String> stopNumbers = stopConfig.hasPath("stopNumbers") ? stopConfig.getStringList("stopNumbers") : Collections.emptyList();
+            final String shortName = stopConfig.getString("shortName");
+            final List<String> stopNumbers = stopConfig.hasPath("stopNumbers")
+                    ? stopConfig.getStringList("stopNumbers")
+                    : Collections.emptyList();
 
-                    shortNames.add(shortName);
-                    stopNumbers.forEach(stopNumber -> {
-                        shortNameByStopNumber.put(stopNumber, shortName);
-                        stopNumbersByShortName.put(shortName, stopNumber);
-                    });
-                });
+            shortNames.add(shortName);
+            stopNumbers.forEach(stopNumber -> {
+                shortNameByStopNumber.put(stopNumber, shortName);
+                stopNumbersByShortName.put(shortName, stopNumber);
+            });
+        });
 
         final Config config = ConfigParser.createConfig();
 
@@ -56,14 +57,17 @@ public class MetroUtils {
         utcDateTimeFormatter = dateTimeFormatter.withZone(utcZoneId);
     }
 
-    private MetroUtils() {}
+    private MetroUtils() {
+    }
 
     public static Optional<String> getShortName(final String stopNumber) {
         return Optional.ofNullable(shortNameByStopNumber.get(stopNumber));
     }
 
     public static List<String> getStopNumbers(final String shortName) {
-        return stopNumbersByShortName.containsKey(shortName) ? stopNumbersByShortName.get(shortName) : Collections.emptyList();
+        return stopNumbersByShortName.containsKey(shortName)
+                ? stopNumbersByShortName.get(shortName)
+                : Collections.emptyList();
     }
 
     public static Optional<Integer> getJoreDirection(final String startStation, final String endStation) {
@@ -72,7 +76,9 @@ public class MetroUtils {
         if (startStopIndex == -1 || endStopIndex == -1 || startStopIndex == endStopIndex) {
             return Optional.empty();
         }
-        return Optional.of(startStopIndex < endStopIndex ? PubtransFactory.JORE_DIRECTION_ID_OUTBOUND : PubtransFactory.JORE_DIRECTION_ID_INBOUND);
+        return Optional.of(startStopIndex < endStopIndex
+                ? PubtransFactory.JORE_DIRECTION_ID_OUTBOUND
+                : PubtransFactory.JORE_DIRECTION_ID_INBOUND);
     }
 
     public static Optional<String> getStopNumber(final String shortName, final int joreDirection) {
@@ -90,12 +96,14 @@ public class MetroUtils {
         return Optional.ofNullable(stopNumber);
     }
 
-    public static Optional<String> getStopNumber(final String shortName, final String startStopShortName, final String endStopShortName) {
+    public static Optional<String> getStopNumber(final String shortName, final String startStopShortName,
+            final String endStopShortName) {
         final Optional<Integer> joreDirection = getJoreDirection(startStopShortName, endStopShortName);
         return joreDirection.isPresent() ? getStopNumber(shortName, joreDirection.get()) : Optional.empty();
     }
 
-    public static Optional<String> convertDatetime(final String datetime, final DateTimeFormatter formatter, final ZoneId toZoneId) {
+    public static Optional<String> convertDatetime(final String datetime, final DateTimeFormatter formatter,
+            final ZoneId toZoneId) {
         if (datetime == null || datetime.isEmpty() || datetime.equals("null")) {
             return Optional.empty();
         }
@@ -103,8 +111,7 @@ public class MetroUtils {
         try {
             final ZonedDateTime zonedDateTime = ZonedDateTime.parse(datetime, formatter).withZoneSameInstant(toZoneId);
             return Optional.of(zonedDateTime.format(dateTimeFormatter));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Failed to parse datetime from {}", datetime, e);
             return Optional.empty();
         }
@@ -117,8 +124,7 @@ public class MetroUtils {
 
         try {
             return Optional.of(ZonedDateTime.parse(metroAtsDatetime, metroAtsDateTimeFormatter));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Failed to parse datetime from {}", metroAtsDatetime, e);
             return Optional.empty();
         }
