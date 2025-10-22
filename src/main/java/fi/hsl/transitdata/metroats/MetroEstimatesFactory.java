@@ -3,6 +3,7 @@ package fi.hsl.transitdata.metroats;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.hsl.common.mqtt.proto.Mqtt;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
+import fi.hsl.common.redis.RedisStore;
 import fi.hsl.common.transitdata.TransitdataProperties;
 import fi.hsl.common.transitdata.TransitdataSchema;
 import fi.hsl.common.transitdata.proto.MetroAtsProtos;
@@ -13,10 +14,18 @@ import fi.hsl.transitdata.metroats.models.MetroTrainType;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
 
-import java.time.*;
-import java.util.*;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class MetroEstimatesFactory {
@@ -25,19 +34,16 @@ public class MetroEstimatesFactory {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final Set<String> LANSIMETRO2_STATIONS = Set.of("KIL", "ESL", "SOU", "KAI", "FIN");
-    private static final ZonedDateTime LANSIMETRO2_ENABLED_FROM = ZonedDateTime.of(
-            LocalDate.of(2022, 12, 3),
-            LocalTime.of(4, 0),
-            ZoneId.of("Europe/Helsinki")
-    );
+    private static final ZonedDateTime LANSIMETRO2_ENABLED_FROM = ZonedDateTime.of(LocalDate.of(2022, 12, 3),
+            LocalTime.of(4, 0), ZoneId.of("Europe/Helsinki"));
 
-    private final Jedis jedis;
+    private final RedisStore redisStore;
     private final boolean addedTripsEnabled;
 
     private final EarlyDepartureLogger earlyDepartureLogger = new EarlyDepartureLogger(Duration.ofMinutes(5));
 
     public MetroEstimatesFactory(final PulsarApplicationContext context, boolean addedTripsEnabled) {
-        this.jedis = context.getJedis();
+        this.redisStore = context.getRedisStore();
         this.addedTripsEnabled = addedTripsEnabled;
         log.info("addedTripsEnabled set to: {}", this.addedTripsEnabled);
     }
@@ -66,6 +72,7 @@ public class MetroEstimatesFactory {
     }
 
     //TODO: remove this after Länsimetro 2 is opened
+    @Deprecated
     private static boolean shouldIgnoreStation(final String stationCode, final ZonedDateTime metroStartTime) {
         //Ignore Länsimetro 2 stations before Länsimetro 2 is opened
         return LANSIMETRO2_STATIONS.contains(stationCode) && metroStartTime.compareTo(LANSIMETRO2_ENABLED_FROM) < 0;
@@ -73,7 +80,8 @@ public class MetroEstimatesFactory {
 
     private Optional<MetroAtsProtos.MetroEstimate> toMetroEstimate(final MetroEstimate metroEstimate) throws Exception {
         if (metroEstimate.routeRows.isEmpty()) {
-            log.warn("No route rows for metro estimate (route name: {}, start time: {}), cannot process", metroEstimate.routeName, metroEstimate.beginTime);
+            log.warn("No route rows for metro estimate (route name: {}, start time: {}), cannot process",
+                    metroEstimate.routeName, metroEstimate.beginTime);
             return Optional.empty();
         }
 
@@ -90,23 +98,23 @@ public class MetroEstimatesFactory {
 
         //Find first route row with stop number (i.e. first station which can be used by passengers). Route rows can contain stations which passengers can't use due to Länsimetro 2 test traffic
         final Optional<MetroStopEstimate> firstRouteRowWithStopNumber = metroEstimate.routeRows.stream()
-                .filter(metroStopEstimateFilter)
-                .findFirst();
+                .filter(metroStopEstimateFilter).findFirst();
         if (firstRouteRowWithStopNumber.isEmpty()) {
-            log.warn("No first route row with stop numbers found for metro estimate (route name: {}, start time: {})", metroEstimate.routeName, metroEstimate.beginTime);
+            log.warn("No first route row with stop numbers found for metro estimate (route name: {}, start time: {})",
+                    metroEstimate.routeName, metroEstimate.beginTime);
             return Optional.empty();
         }
 
         final Optional<MetroStopEstimate> lastRouteRowWithStopNumber = metroEstimate.routeRows.stream()
-                .filter(metroStopEstimateFilter)
-                .reduce((a, b) -> b);
+                .filter(metroStopEstimateFilter).reduce((a, b) -> b);
 
         final String startStopShortName = firstRouteRowWithStopNumber.get().station;
         final String endStopShortName = lastRouteRowWithStopNumber.get().station;
 
         // Create a metroKey to be used for Redis Query
         final String metroKey;
-        final Optional<String> maybeStopNumber = MetroUtils.getStopNumber(startStopShortName, startStopShortName, endStopShortName);
+        final Optional<String> maybeStopNumber = MetroUtils.getStopNumber(startStopShortName, startStopShortName,
+                endStopShortName);
         if (maybeStopNumber.isPresent()) {
             String beginTime = firstRouteRowWithStopNumber.get().departureTimePlanned;
 
@@ -121,7 +129,8 @@ public class MetroEstimatesFactory {
                 return Optional.empty();
             }
         } else {
-            log.warn("Failed to get stop number for stop shortNames: startStopShortName: {}, endStopShortName: {}", startStopShortName, endStopShortName);
+            log.warn("Failed to get stop number for stop shortNames: startStopShortName: {}, endStopShortName: {}",
+                    startStopShortName, endStopShortName);
             return Optional.empty();
         }
 
@@ -137,7 +146,9 @@ public class MetroEstimatesFactory {
         }
         metroEstimateBuilder.setTrainType(maybeMetroTrainTypeAts.get());
         // journeySectionprogress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroEstimate.journeySectionprogress, String.format("route name: %s, begin time: %s", metroEstimate.routeName, metroEstimate.beginTime));
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(
+                metroEstimate.journeySectionprogress,
+                String.format("route name: %s, begin time: %s", metroEstimate.routeName, metroEstimate.beginTime));
         if (!maybeMetroAtsProgress.isPresent()) {
             log.warn("metroEstimate.journeySectionprogress is missing: {}", metroEstimate.journeySectionprogress);
             return Optional.empty();
@@ -167,9 +178,12 @@ public class MetroEstimatesFactory {
             if (map.containsKey(TransitdataProperties.KEY_DIRECTION))
                 metroEstimateBuilder.setDirection(map.get(TransitdataProperties.KEY_DIRECTION));
         } else if (addedTripsEnabled) {
-            log.info("Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ", metroKey, metroJourneyData);
+            log.debug(
+                    "Couldn't read metroJourneyData from redis, assuming that this metro journey is not present in the static schedule and creating added trip. Metro key: {}, redis map: {}. ",
+                    metroKey, metroJourneyData);
             MetroUtils.getRouteName(startStopShortName, endStopShortName).ifPresent(metroEstimateBuilder::setRouteName);
-            MetroUtils.getJoreDirection(startStopShortName, endStopShortName).ifPresent(dir -> metroEstimateBuilder.setDirection(String.valueOf(dir)));
+            MetroUtils.getJoreDirection(startStopShortName, endStopShortName)
+                    .ifPresent(dir -> metroEstimateBuilder.setDirection(String.valueOf(dir)));
             maybeStopNumber.ifPresent(metroEstimateBuilder::setStartStopNumber);
 
             String startDateTime = MetroUtils.convertUtcDatetimeToPubtransDatetime(metroEstimate.beginTime).get();
@@ -180,15 +194,18 @@ public class MetroEstimatesFactory {
             metroEstimateBuilder.setOperatingDay(operatingDay);
             metroEstimateBuilder.setStartTime(startTime);
 
-            metroEstimateBuilder.setDvjId("metro-"+operatingDay+"-"+startTime+"-"+metroEstimate.routeName+"-"+metroEstimate.trainType.toString());
+            metroEstimateBuilder.setDvjId("metro-" + operatingDay + "-" + startTime + "-" + metroEstimate.routeName
+                    + "-" + metroEstimate.trainType.toString());
 
             metroEstimateBuilder.setScheduled(false);
         } else {
-            log.warn("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}.", metroKey, metroJourneyData);
+            log.warn("Couldn't read metroJourneyData from redis, ignoring this estimate. Metro key: {}, redis map: {}.",
+                    metroKey, metroJourneyData);
             return Optional.empty();
         }
 
-        Integer direction = metroJourneyData.map(map -> Integer.parseInt(map.get(TransitdataProperties.KEY_DIRECTION))).orElse(MetroUtils.getJoreDirection(startStopShortName, endStopShortName).orElse(null));
+        Integer direction = metroJourneyData.map(map -> Integer.parseInt(map.get(TransitdataProperties.KEY_DIRECTION)))
+                .orElse(MetroUtils.getJoreDirection(startStopShortName, endStopShortName).orElse(null));
         if (direction == null) {
             log.warn("Couldn't read direction from metroJourneyData: {}.", direction);
             return Optional.empty();
@@ -197,16 +214,20 @@ public class MetroEstimatesFactory {
         // routeRows
         List<MetroAtsProtos.MetroStopEstimate> metroStopEstimates = new ArrayList<>();
         for (MetroStopEstimate metroStopEstimate : metroEstimate.routeRows) {
-            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate, direction, metroEstimate.beginTime, startStopShortName, metroEstimate.routeName);
+            Optional<MetroAtsProtos.MetroStopEstimate> maybeMetroStopEstimate = toMetroStopEstimate(metroStopEstimate,
+                    direction, metroEstimate.beginTime, startStopShortName, metroEstimate.routeName);
             if (maybeMetroStopEstimate.isEmpty()) {
-                log.warn("No estimate created for station {} of metro trip {} - {}", metroStopEstimate.station, metroEstimate.routeName, metroEstimate.beginTime);
+                log.warn("No estimate created for station {} of metro trip {} - {}", metroStopEstimate.station,
+                        metroEstimate.routeName, metroEstimate.beginTime);
             } else {
                 metroStopEstimates.add(maybeMetroStopEstimate.get());
             }
         }
 
-        if (!metroStopEstimates.stream().map(MetroAtsProtos.MetroStopEstimate::getStopNumber).allMatch(new HashSet<>()::add)) {
-            log.warn("Metro {} (beginTime: {}, dir: {}) had multiple estimates for one stop", metroEstimate.routeName, metroEstimate.beginTime, direction);
+        if (!metroStopEstimates.stream().map(MetroAtsProtos.MetroStopEstimate::getStopNumber)
+                .allMatch(new HashSet<>()::add)) {
+            log.warn("Metro {} (beginTime: {}, dir: {}) had multiple estimates for one stop", metroEstimate.routeName,
+                    metroEstimate.beginTime, direction);
         }
 
         metroEstimateBuilder.addAllMetroRows(metroStopEstimates);
@@ -217,13 +238,13 @@ public class MetroEstimatesFactory {
     private Optional<MetroAtsProtos.MetroTrainType> getMetroTrainTypeAts(MetroTrainType metroTrainType) {
         Optional<MetroAtsProtos.MetroTrainType> maybeMetroTrainTypeAts;
         switch (metroTrainType) {
-            case M:
+            case M :
                 maybeMetroTrainTypeAts = Optional.of(MetroAtsProtos.MetroTrainType.M);
                 break;
-            case T:
+            case T :
                 maybeMetroTrainTypeAts = Optional.of(MetroAtsProtos.MetroTrainType.T);
                 break;
-            default:
+            default :
                 log.warn("Unrecognized metroTrainType {}.", metroTrainType);
                 maybeMetroTrainTypeAts = Optional.empty();
                 break;
@@ -232,18 +253,21 @@ public class MetroEstimatesFactory {
         return maybeMetroTrainTypeAts;
     }
 
-    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate (MetroStopEstimate metroStopEstimate, Integer direction, String beginTime, String startStopShortName, String routeName) {
+    private Optional<MetroAtsProtos.MetroStopEstimate> toMetroStopEstimate(MetroStopEstimate metroStopEstimate,
+            Integer direction, String beginTime, String startStopShortName, String routeName) {
         final Optional<ZonedDateTime> metroStartTime = MetroUtils.parseMetroAtsDatetime(beginTime);
         if (metroStartTime.isEmpty()) {
             return Optional.empty();
         }
 
         if (shouldIgnoreStation(metroStopEstimate.station, metroStartTime.get())) {
-            log.info("Ignoring estimate from station {}, metro start time: {}, start stop: {}, route: {}", metroStopEstimate.station, beginTime, startStopShortName, routeName);
+            log.debug("Ignoring estimate from station {}, metro start time: {}, start stop: {}, route: {}",
+                    metroStopEstimate.station, beginTime, startStopShortName, routeName);
             return Optional.empty();
         }
 
-        MetroAtsProtos.MetroStopEstimate.Builder metroStopEstimateBuilder = MetroAtsProtos.MetroStopEstimate.newBuilder();
+        MetroAtsProtos.MetroStopEstimate.Builder metroStopEstimateBuilder = MetroAtsProtos.MetroStopEstimate
+                .newBuilder();
 
         // Set fields from mqtt-pulsar-gateway into metroStopEstimateBuilder
         metroStopEstimateBuilder.setStation(metroStopEstimate.station);
@@ -285,13 +309,17 @@ public class MetroEstimatesFactory {
         String shortName = metroStopEstimate.station;
         Optional<String> maybeStopNumber = MetroUtils.getStopNumber(shortName, direction);
         if (!maybeStopNumber.isPresent()) {
-            log.warn("Couldn't find stopNumber for shortName: {} (Metro: direction {}, beginTime {}, startStopShortName: {})", shortName, direction, beginTime, startStopShortName);
+            log.warn(
+                    "Couldn't find stopNumber for shortName: {} (Metro: direction {}, beginTime {}, startStopShortName: {})",
+                    shortName, direction, beginTime, startStopShortName);
             return Optional.empty();
         }
         metroStopEstimateBuilder.setStopNumber(maybeStopNumber.get());
 
         // rowProgress
-        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(metroStopEstimate.rowProgress, String.format("route name: %s, departure time forecast %s:, station: %s", routeName, metroStopEstimate.departureTimeForecast, metroStopEstimate.station));
+        Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress = getMetroAtsProgress(
+                metroStopEstimate.rowProgress, String.format("route name: %s, departure time forecast %s:, station: %s",
+                        routeName, metroStopEstimate.departureTimeForecast, metroStopEstimate.station));
         maybeMetroAtsProgress.ifPresent(metroStopEstimateBuilder::setRowProgress);
 
         return Optional.of(metroStopEstimateBuilder.build());
@@ -304,20 +332,20 @@ public class MetroEstimatesFactory {
     private Optional<MetroAtsProtos.MetroProgress> getMetroAtsProgress(MetroProgress metroProgress, String details) {
         Optional<MetroAtsProtos.MetroProgress> maybeMetroAtsProgress;
         switch (metroProgress) {
-            case SCHEDULED:
+            case SCHEDULED :
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.SCHEDULED);
                 break;
-            case INPROGRESS:
+            case INPROGRESS :
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.INPROGRESS);
                 break;
-            case COMPLETED:
+            case COMPLETED :
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.COMPLETED);
                 break;
-            case CANCELLED:
-                log.info("metroProgress is cancelled: details {} %s", details);
+            case CANCELLED :
+                log.debug("metroProgress is cancelled: details {} %s", details);
                 maybeMetroAtsProgress = Optional.of(MetroAtsProtos.MetroProgress.CANCELLED);
                 break;
-            default:
+            default :
                 log.warn("Unrecognized metroProgress {}.", metroProgress);
                 maybeMetroAtsProgress = Optional.empty();
                 break;
@@ -325,34 +353,18 @@ public class MetroEstimatesFactory {
         return maybeMetroAtsProgress;
     }
 
-
     private Optional<Map<String, String>> getMetroJourneyData(final String metroKey) {
-        synchronized (jedis) {
-            try {
-                Map<String, String> redisMap;
-                if (jedis.exists(metroKey)) {
-                    String keyType = jedis.type(metroKey);
-                    redisMap = jedis.hgetAll(metroKey);
-                    if (redisMap.isEmpty()) {
-                        log.warn("Couldn't find metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
-                        return Optional.empty();
-                    } else {
-                        log.warn("Found metroJourneyData from redis. Metro key: {}. Key type: {}", metroKey, keyType);
-                    }
-                } else {
-                    log.error("Couldn't find key from jedis. Metro key: {}. Db size: {}", metroKey, jedis.dbSize());
-                    return Optional.empty();
-                }
-                if (redisMap == null) {
-                    log.warn("Returning null redisMap");
-                } else {
-                    log.info("Returning redisMap, size=" + redisMap.size());
-                }
-                return Optional.ofNullable(redisMap);
-            } catch (Exception e) {
-                log.error("Couldn't read metroJourneyData from redis. Metro key: {}", metroKey, e);
-                return Optional.empty();
+        try {
+            var journeyData = redisStore.getValues(metroKey);
+            if (journeyData.isEmpty()) {
+                log.debug("Couldn't find any data for metro key: {}", metroKey);
             }
+
+            return journeyData;
+
+        } catch (Exception e) {
+            log.error("Couldn't read metroJourneyData from redis. Metro key: {}", metroKey, e);
+            return Optional.empty();
         }
     }
 
@@ -361,7 +373,7 @@ public class MetroEstimatesFactory {
             MetroEstimate metroEstimate = mapper.readValue(payload, MetroEstimate.class);
             return Optional.of(metroEstimate);
         } catch (Exception e) {
-            log.warn(String.format("Failed to parse payload %s.", new String(payload)), e);
+            log.warn("Failed to parse payload {}.", new String(payload), e);
         }
         return Optional.empty();
     }

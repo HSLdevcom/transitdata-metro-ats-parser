@@ -23,27 +23,32 @@ public class MetroStopEstimate {
     }
 
     public void setArrivalTimeForecast(String arrivalTimeForecast) {
-        Optional<String> maybeArrivalTimeForecast = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(arrivalTimeForecast);
+        Optional<String> maybeArrivalTimeForecast = MetroUtils
+                .convertMetroAtsDatetimeToUtcDatetime(arrivalTimeForecast);
         this.arrivalTimeForecast = maybeArrivalTimeForecast.orElse(null);
     }
 
     public void setArrivalTimeMeasured(String arrivalTimeMeasured) {
-        Optional<String> maybeArrivalTimeMeasured = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(arrivalTimeMeasured);
+        Optional<String> maybeArrivalTimeMeasured = MetroUtils
+                .convertMetroAtsDatetimeToUtcDatetime(arrivalTimeMeasured);
         this.arrivalTimeMeasured = maybeArrivalTimeMeasured.orElse(null);
     }
 
     public void setDepartureTimePlanned(String departureTimePlanned) {
-        Optional<String> maybeDepartureTimePlanned = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(departureTimePlanned);
+        Optional<String> maybeDepartureTimePlanned = MetroUtils
+                .convertMetroAtsDatetimeToUtcDatetime(departureTimePlanned);
         this.departureTimePlanned = maybeDepartureTimePlanned.orElse(null);
     }
 
     public void setDepartureTimeForecast(String departureTimeForecast) {
-        Optional<String> maybeDepartureTimeForecast = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(departureTimeForecast);
+        Optional<String> maybeDepartureTimeForecast = MetroUtils
+                .convertMetroAtsDatetimeToUtcDatetime(departureTimeForecast);
         this.departureTimeForecast = maybeDepartureTimeForecast.orElse(null);
     }
 
     public void setDepartureTimeMeasured(String departureTimeMeasured) {
-        Optional<String> maybeDepartureTimeMeasured = MetroUtils.convertMetroAtsDatetimeToUtcDatetime(departureTimeMeasured);
+        Optional<String> maybeDepartureTimeMeasured = MetroUtils
+                .convertMetroAtsDatetimeToUtcDatetime(departureTimeMeasured);
         this.departureTimeMeasured = maybeDepartureTimeMeasured.orElse(null);
     }
 }
