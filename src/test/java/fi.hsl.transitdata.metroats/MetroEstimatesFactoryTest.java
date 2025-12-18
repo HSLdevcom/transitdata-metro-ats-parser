@@ -1,15 +1,14 @@
 package fi.hsl.transitdata.metroats;
 
+import static org.junit.Assert.*;
+
 import fi.hsl.common.files.FileUtils;
 import fi.hsl.transitdata.metroats.models.MetroEstimate;
 import fi.hsl.transitdata.metroats.models.MetroStopEstimate;
-import org.junit.Test;
-
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Optional;
-
-import static org.junit.Assert.*;
+import org.junit.Test;
 
 public class MetroEstimatesFactoryTest {
 
@@ -31,5 +30,41 @@ public class MetroEstimatesFactoryTest {
         assertEquals("2019-07-09T05:06:30.404Z", metroStopEstimate.departureTimePlanned);
         assertEquals("2019-07-09T05:06:13.941Z", metroStopEstimate.departureTimeForecast);
         assertEquals("2019-07-09T05:06:32.578Z", metroStopEstimate.departureTimeMeasured);
+    }
+
+    @Test
+    public void testParsePayloadWithNoMeasuredDepartureTimeForFirstStation() throws Exception {
+        // The API surprisingly uses "null" instead of null in JSON.
+        String json = """
+                {
+                  "routeName": "M1",
+                  "beginTime": "2023-01-01T12:01:02.345Z",
+                  "routeRows": [
+                    {
+                      "station": "KIV",
+                      "departureTimeMeasured": "null"
+                    }
+                  ]
+                }""";
+        Optional<MetroEstimate> result = MetroEstimatesFactory.parsePayload(json.getBytes());
+        assertFalse("Should filter out messages without a measured departure time for first station",
+                result.isPresent());
+    }
+
+    @Test
+    public void testParsePayloadWithMeasuredDepartureTimeForFirstStation() throws Exception {
+        String json = """
+                {
+                  "routeName": "M1",
+                  "beginTime": "2023-01-01T12:01:02.345Z",
+                  "routeRows": [
+                    {
+                      "station": "KIV",
+                      "departureTimeMeasured": "2023-01-01T12:01:05.678Z"
+                    }
+                  ]
+                }""";
+        Optional<MetroEstimate> result = MetroEstimatesFactory.parsePayload(json.getBytes());
+        assertTrue("Should accept messages with a measured departure time for first station", result.isPresent());
     }
 }
