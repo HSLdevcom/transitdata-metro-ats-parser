@@ -1,0 +1,12 @@
+name: CI/CD
+
+on:
+  - pull_request
+  - push
+
+jobs:
+  build:
+    uses: HSLdevcom/transitdata-shared-workflows/.github/workflows/ci-cd-java.yml@1.0.0
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.TRANSITDATA_DOCKERHUB_USER }}
+      DOCKER_PASSWORD: ${{ secrets.TRANSITDATA_DOCKERHUB_TOKEN }}
