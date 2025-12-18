@@ -368,9 +368,35 @@ public class MetroEstimatesFactory {
         }
     }
 
+    private static boolean hasFirstRowMeasuredDeparture(MetroEstimate estimate) {
+        if (estimate.routeRows != null && !estimate.routeRows.isEmpty()) {
+            return estimate.routeRows.get(0).departureTimeMeasured != null;
+        }
+        return true;
+    }
+
     public static Optional<MetroEstimate> parsePayload(final byte[] payload) {
         try {
             MetroEstimate metroEstimate = mapper.readValue(payload, MetroEstimate.class);
+
+            /**
+             * We have learned that the Metro Mipro ATS API sends unusable
+             * forecasts for a vehicle journey for a few minutes before the
+             * departure from the first station. Those faulty forecasts tend to
+             * forecast an early departure from the first station which almost
+             * never happens as the drivers will wait until the vehicle journey
+             * is planned to start.
+             *
+             * The workaround is to throw away forecasts before the vehicle has
+             * departed from the first station.
+             */
+            if (!hasFirstRowMeasuredDeparture(metroEstimate)) {
+                log.debug(
+                        "Dropped untrustworthy Mipro ATS forecast that was given before departure from first station. Payload: {}",
+                        new String(payload));
+                return Optional.empty();
+            }
+
             return Optional.of(metroEstimate);
         } catch (Exception e) {
             log.warn("Failed to parse payload {}.", new String(payload), e);
