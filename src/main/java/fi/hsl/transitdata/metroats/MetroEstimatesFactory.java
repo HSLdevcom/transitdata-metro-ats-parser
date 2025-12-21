@@ -369,10 +369,8 @@ public class MetroEstimatesFactory {
     }
 
     private static boolean hasFirstRowMeasuredDeparture(MetroEstimate estimate) {
-        if (estimate.routeRows != null && !estimate.routeRows.isEmpty()) {
-            return estimate.routeRows.get(0).departureTimeMeasured != null;
-        }
-        return true;
+        return estimate.routeRows == null || estimate.routeRows.isEmpty()
+                || estimate.routeRows.get(0).departureTimeMeasured != null;
     }
 
     public static Optional<MetroEstimate> parsePayload(final byte[] payload) {
