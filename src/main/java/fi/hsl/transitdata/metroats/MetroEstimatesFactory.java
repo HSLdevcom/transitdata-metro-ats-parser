@@ -369,6 +369,13 @@ public class MetroEstimatesFactory {
     }
 
     /**
+     * Check if the estimate is a journey cancellation.
+     */
+    private static boolean isJourneyCancellation(MetroEstimate estimate) {
+        return estimate.journeySectionprogress == MetroProgress.CANCELLED;
+    }
+
+    /**
      * Checks if the metro prediction is considered fairly reliable.
      *
      * We have learned that the Metro Mipro ATS API sends unreliable predictions for a vehicle journey for a few
@@ -390,7 +397,7 @@ public class MetroEstimatesFactory {
     public static Optional<MetroEstimate> parsePayload(final byte[] payload) {
         try {
             MetroEstimate metroEstimate = mapper.readValue(payload, MetroEstimate.class);
-            if (!arePredictionsFairlyReliable(metroEstimate)) {
+            if (!isJourneyCancellation(metroEstimate) && !arePredictionsFairlyReliable(metroEstimate)) {
                 log.debug(
                         "Dropped untrustworthy Mipro ATS predictions that were given before departure from first station. Payload: {}",
                         new String(payload));

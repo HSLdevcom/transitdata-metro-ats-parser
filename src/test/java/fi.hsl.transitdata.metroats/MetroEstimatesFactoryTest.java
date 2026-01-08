@@ -67,4 +67,25 @@ public class MetroEstimatesFactoryTest {
         Optional<MetroEstimate> result = MetroEstimatesFactory.parsePayload(json.getBytes());
         assertTrue("Should accept messages with a measured departure time for first station", result.isPresent());
     }
+
+    @Test
+    public void testKeepPayloadThatCancelsJourneyEvenWithNoMeasuredDepartureTimeForFirstStation() throws Exception {
+        // The API surprisingly uses "null" instead of null in JSON.
+        String json = """
+                {
+                  "routeName": "M1",
+                  "beginTime": "2023-01-01T12:01:02.345Z",
+                  "journeySectionprogress": "CANCELLED",
+                  "routeRows": [
+                    {
+                      "station": "KIV",
+                      "departureTimeMeasured": "null"
+                    }
+                  ]
+                }""";
+        Optional<MetroEstimate> result = MetroEstimatesFactory.parsePayload(json.getBytes());
+        assertTrue(
+                "Should accept messages that cancel the whole vehicle journey even if they do not have a measured departure time for first station",
+                result.isPresent());
+    }
 }
