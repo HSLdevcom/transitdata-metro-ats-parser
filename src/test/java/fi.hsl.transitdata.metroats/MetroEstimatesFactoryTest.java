@@ -33,7 +33,7 @@ public class MetroEstimatesFactoryTest {
     }
 
     @Test
-    public void testParsePayloadWithNoMeasuredDepartureTimeForFirstStation() throws Exception {
+    public void testDropPayloadWithNoMeasuredDepartureTimeForFirstStation() throws Exception {
         // The API surprisingly uses "null" instead of null in JSON.
         String json = """
                 {
@@ -52,7 +52,7 @@ public class MetroEstimatesFactoryTest {
     }
 
     @Test
-    public void testParsePayloadWithMeasuredDepartureTimeForFirstStation() throws Exception {
+    public void testKeepPayloadWithMeasuredDepartureTimeForFirstStation() throws Exception {
         String json = """
                 {
                   "routeName": "M1",
