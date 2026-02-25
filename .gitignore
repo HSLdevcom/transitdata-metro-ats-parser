@@ -18,3 +18,7 @@ target/*
 *.tmp
 *.temp
 run/data
+/.classpath
+/.project
+/AGENTS.md
+.settings
