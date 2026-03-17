@@ -368,41 +368,9 @@ public class MetroEstimatesFactory {
         }
     }
 
-    /**
-     * Check if the estimate is a journey cancellation.
-     */
-    private static boolean isJourneyCancellation(MetroEstimate estimate) {
-        return estimate.journeySectionprogress == MetroProgress.CANCELLED;
-    }
-
-    /**
-     * Checks if the metro prediction is considered fairly reliable.
-     *
-     * We have learned that the Metro Mipro ATS API sends unreliable predictions for a vehicle journey for a few
-     * minutes before the departure from the first station. Those faulty predictions tend to predict an early departure
-     * from the first station. That almost never happens as the drivers will wait until the vehicle journey is planned
-     * to start.
-     *
-     * This method filters out predictions where the first station's departureTimeMeasured is missing (or invalid).
-     *
-     * @param estimate the MetroEstimate to validate
-     * @return true if the predictions can be considered fairly reliable or no predictions were given,
-     *         false if the predictions cannot be considered fairly reliable
-     */
-    private static boolean arePredictionsFairlyReliable(MetroEstimate estimate) {
-        return estimate.routeRows == null || estimate.routeRows.isEmpty()
-                || estimate.routeRows.get(0).departureTimeMeasured != null;
-    }
-
     public static Optional<MetroEstimate> parsePayload(final byte[] payload) {
         try {
             MetroEstimate metroEstimate = mapper.readValue(payload, MetroEstimate.class);
-            if (!isJourneyCancellation(metroEstimate) && !arePredictionsFairlyReliable(metroEstimate)) {
-                log.debug(
-                        "Dropped untrustworthy Mipro ATS predictions that were given before departure from first station. Payload: {}",
-                        new String(payload));
-                return Optional.empty();
-            }
             return Optional.of(metroEstimate);
         } catch (Exception e) {
             log.warn("Failed to parse payload {}.", new String(payload), e);
