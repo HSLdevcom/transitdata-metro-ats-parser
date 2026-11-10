@@ -1,6 +1,7 @@
 package fi.hsl.transitdata.metroats;
 
 import fi.hsl.common.transitdata.proto.MetroAtsProtos;
+import fi.hsl.common.metrics.PipelineMetrics;
 import fi.hsl.common.pulsar.IMessageHandler;
 import fi.hsl.common.pulsar.PulsarApplicationContext;
 import fi.hsl.common.transitdata.TransitdataProperties;
@@ -34,9 +35,11 @@ public class MessageHandler implements IMessageHandler {
                 if (maybeMetroEstimate.isPresent()) {
                     final MessageId messageId = received.getMessageId();
                     final long timestamp = received.getEventTime();
+                    final long sourceTimestamp = PipelineMetrics.resolveSourceTimestampMs(received);
                     final String key = received.getKey();
                     final MetroAtsProtos.MetroEstimate metroEstimate = maybeMetroEstimate.get();
-                    sendPulsarMessage(messageId, metroEstimate, timestamp, key);
+                    sendPulsarMessage(messageId, metroEstimate, timestamp, key, sourceTimestamp);
+                    PipelineMetrics.observeLatencyFromSource("metro_estimate", received);
                 } else {
                     log.warn("Parsing MQTTRawMessage has failed, ignoring.");
                     ack(received.getMessageId()); //Ack so we don't receive it again
@@ -59,10 +62,11 @@ public class MessageHandler implements IMessageHandler {
     }
 
     private void sendPulsarMessage(MessageId received, MetroAtsProtos.MetroEstimate estimate, long timestamp,
-            String key) {
+            String key, long sourceTimestamp) {
         producer.newMessage().key(key).eventTime(timestamp)
                 .property(TransitdataProperties.KEY_PROTOBUF_SCHEMA, ProtobufSchema.MetroAtsEstimate.toString())
                 .property(TransitdataProperties.KEY_SCHEMA_VERSION, Integer.toString(estimate.getSchemaVersion()))
+                .property(TransitdataProperties.KEY_SOURCE_MESSAGE_TIMESTAMP_MS, Long.toString(sourceTimestamp))
                 .value(estimate.toByteArray()).sendAsync().whenComplete((MessageId id, Throwable t) -> {
                     if (t != null) {
                         log.error("Failed to send Pulsar message", t);
